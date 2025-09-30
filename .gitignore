@@ -161,3 +161,12 @@ _data/
 **/.DS_Store
 .idea
 install_cyberpot.log
+# Terraform files
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+.terraform.tfstate.lock.info
+
+# Terraform provider files
+**/.terraform/providers/
