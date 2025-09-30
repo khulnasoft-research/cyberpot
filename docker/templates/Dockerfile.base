@@ -1,0 +1,240 @@
+# ================================================================================================
+# CyberPot Base Dockerfile Template
+# Base image for all CyberPot services with common dependencies and security configurations
+# ================================================================================================
+
+ARG BASE_IMAGE=ubuntu:22.04
+FROM ${BASE_IMAGE}
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Set metadata
+LABEL maintainer="CyberPot Team <team@cyberpot.io>"
+LABEL version="24.04.1"
+LABEL description="CyberPot Base Docker Image"
+LABEL base_image="${BASE_IMAGE}"
+
+# ================================================================================================
+# SYSTEM DEPENDENCIES & SECURITY
+# ================================================================================================
+
+# Install system dependencies and security tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core system utilities
+    curl \
+    wget \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    apt-transport-https \
+    software-properties-common \
+    \
+    # Security and monitoring tools
+    fail2ban \
+    rkhunter \
+    aide \
+    logwatch \
+    auditd \
+    apparmor \
+    apparmor-utils \
+    \
+    # Network and system tools
+    net-tools \
+    iproute2 \
+    tcpdump \
+    nmap \
+    htop \
+    vim \
+    nano \
+    jq \
+    \
+    # Development and debugging tools
+    git \
+    python3 \
+    python3-pip \
+    python3-venv \
+    \
+    # SSL and encryption tools
+    openssl \
+    ssl-cert \
+    \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install security updates
+RUN apt-get update && apt-get upgrade -y && apt-get clean
+
+# ================================================================================================
+# PYTHON ENVIRONMENT SETUP
+# ================================================================================================
+
+# Create Python virtual environment
+ENV PYTHON_VENV=/opt/venv
+RUN python3 -m venv ${PYTHON_VENV}
+ENV PATH="${PYTHON_VENV}/bin:$PATH"
+
+# Upgrade pip and install common Python packages
+RUN pip install --no-cache-dir --upgrade \
+    pip \
+    setuptools \
+    wheel \
+    requests \
+    python-dateutil \
+    pytz \
+    pyyaml \
+    jinja2 \
+    click \
+    rich \
+    pydantic \
+    fastapi \
+    uvicorn \
+    aiohttp \
+    aiofiles \
+    structlog \
+    python-multipart
+
+# ================================================================================================
+# USER AND PERMISSIONS
+# ================================================================================================
+
+# Create cyberpot user and group
+ARG CYBERPOT_UID=1000
+ARG CYBERPOT_GID=1000
+RUN groupadd -g ${CYBERPOT_GID} cyberpot && \
+    useradd -u ${CYBERPOT_UID} -g cyberpot -m -s /bin/bash cyberpot
+
+# Create necessary directories with proper ownership
+RUN mkdir -p /home/cyberpot/{data,logs,backups,config} && \
+    mkdir -p /var/log/cyberpot && \
+    chown -R cyberpot:cyberpot /home/cyberpot && \
+    chown -R cyberpot:cyberpot /var/log/cyberpot
+
+# ================================================================================================
+# SECURITY HARDENING
+# ================================================================================================
+
+# Configure AppArmor
+RUN echo "Creating AppArmor profile..." && \
+    mkdir -p /etc/apparmor.d && \
+    echo "#include <tunables/global>" > /etc/apparmor.d/cyberpot-base && \
+    echo "profile cyberpot-base flags=(attach_disconnected,mediate_deleted) {" >> /etc/apparmor.d/cyberpot-base && \
+    echo "  #include <abstractions/base>" >> /etc/apparmor.d/cyberpot-base && \
+    echo "  #include <abstractions/python>" >> /etc/apparmor.d/cyberpot-base && \
+    echo "  /home/cyberpot/** rwk," >> /etc/apparmor.d/cyberpot-base && \
+    echo "  /var/log/cyberpot/** rwk," >> /etc/apparmor.d/cyberpot-base && \
+    echo "  /tmp/** rwk," >> /etc/apparmor.d/cyberpot-base && \
+    echo "  network inet dgram," >> /etc/apparmor.d/cyberpot-base && \
+    echo "  network inet stream," >> /etc/apparmor.d/cyberpot-base && \
+    echo "  capability net_bind_service," >> /etc/apparmor.d/cyberpot-base && \
+    echo "}" >> /etc/apparmor.d/cyberpot-base
+
+# Enable AppArmor
+RUN apparmor_parser -r /etc/apparmor.d/cyberpot-base 2>/dev/null || true
+
+# Configure fail2ban
+RUN mkdir -p /var/run/fail2ban && \
+    echo "[DEFAULT]" > /etc/fail2ban/jail.local && \
+    echo "bantime = 3600" >> /etc/fail2ban/jail.local && \
+    echo "findtime = 600" >> /etc/fail2ban/jail.local && \
+    echo "maxretry = 5" >> /etc/fail2ban/jail.local
+
+# ================================================================================================
+# LOGGING AND MONITORING
+# ================================================================================================
+
+# Configure logging
+RUN mkdir -p /var/log/cyberpot && \
+    chown cyberpot:cyberpot /var/log/cyberpot && \
+    chmod 755 /var/log/cyberpot
+
+# Install and configure logrotate
+RUN echo "/var/log/cyberpot/*.log {" > /etc/logrotate.d/cyberpot && \
+    echo "    daily" >> /etc/logrotate.d/cyberpot && \
+    echo "    missingok" >> /etc/logrotate.d/cyberpot && \
+    echo "    rotate 30" >> /etc/logrotate.d/cyberpot && \
+    echo "    compress" >> /etc/logrotate.d/cyberpot && \
+    echo "    delaycompress" >> /etc/logrotate.d/cyberpot && \
+    echo "    notifempty" >> /etc/logrotate.d/cyberpot && \
+    echo "    create 644 cyberpot cyberpot" >> /etc/logrotate.d/cyberpot && \
+    echo "}" >> /etc/logrotate.d/cyberpot
+
+# ================================================================================================
+# HEALTH CHECK
+# ================================================================================================
+
+# Add health check script
+COPY docker/templates/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+# Default health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh || exit 1
+
+# ================================================================================================
+# ENVIRONMENT VARIABLES
+# ================================================================================================
+
+# Set default environment variables
+ENV CYBERPOT_VERSION=24.04.1
+ENV CYBERPOT_ENVIRONMENT=production
+ENV PYTHONPATH=/home/cyberpot:/opt/venv/lib/python3.10/site-packages
+ENV LOG_LEVEL=INFO
+
+# ================================================================================================
+# ENTRYPOINT AND DEFAULT COMMAND
+# ================================================================================================
+
+# Switch to cyberpot user
+USER cyberpot
+WORKDIR /home/cyberpot
+
+# Create basic entrypoint script
+RUN echo '#!/bin/bash' > /home/cyberpot/entrypoint.sh && \
+    echo 'set -e' >> /home/cyberpot/entrypoint.sh && \
+    echo 'echo "Starting CyberPot service..."' >> /home/cyberpot/entrypoint.sh && \
+    echo 'exec "$@"' >> /home/cyberpot/entrypoint.sh && \
+    chmod +x /home/cyberpot/entrypoint.sh
+
+ENTRYPOINT ["/home/cyberpot/entrypoint.sh"]
+CMD ["echo", "CyberPot base container ready. Override CMD in child images."]
+
+# ================================================================================================
+# METADATA AND LABELS
+# ================================================================================================
+
+# Build-time metadata
+ARG BUILD_DATE
+ARG GIT_COMMIT
+ARG BUILD_VERSION
+
+LABEL build_date="${BUILD_DATE}"
+LABEL git_commit="${GIT_COMMIT}"
+LABEL build_version="${BUILD_VERSION}"
+
+# Security labels
+LABEL security.scan-date=""
+LABEL security.last-update=""
+
+# ================================================================================================
+# VOLUMES
+# ================================================================================================
+
+# Define volumes for persistent data
+VOLUME ["/home/cyberpot/data", "/home/cyberpot/logs", "/home/cyberpot/backups"]
+
+# ================================================================================================
+# PORTS
+# ================================================================================================
+
+# Expose common CyberPot ports (services should expose their specific ports)
+EXPOSE 64295 64297
+
+# ================================================================================================
+# CLEANUP
+# ================================================================================================
+
+# Remove unnecessary files to reduce image size
+RUN rm -rf /tmp/* /var/tmp/* /var/cache/apt/*

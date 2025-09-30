@@ -6,11 +6,6 @@ myCYBERPOT_CONF_FILE="/home/${myUSER}/cyberpot/.env"
 myANSIBLE_CYBERPOT_PLAYBOOK="installer/remove/cyberpot.yml"
 
 myUNINSTALLER=$(cat << "EOF"
- _____     ____       _     _   _       _           _        _ _
-|_   _|   |  _ \ ___ | |_  | | | |_ __ (_)_ __  ___| |_ __ _| | | ___ _ __
-  | |_____| |_) / _ \| __| | | | |  _ \| |  _ \/ __| __/ _  | | |/ _ \  __|
-  | |_____|  __/ (_) | |_  | |_| | | | | | | | \__ \ || (_| | | |  __/ |
-  |_|     |_|   \___/ \__|  \___/|_| |_|_|_| |_|___/\__\__,_|_|_|\___|_|
 EOF
 )
 

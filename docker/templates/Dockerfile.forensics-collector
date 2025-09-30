@@ -1,0 +1,245 @@
+# ================================================================================================
+# CyberPot Digital Forensics Collector Dockerfile Template
+# Service for collecting and analyzing digital evidence for incident response
+# ================================================================================================
+
+ARG BASE_IMAGE=ubuntu:22.04
+FROM ${BASE_IMAGE}
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set metadata
+LABEL maintainer="CyberPot Team <team@cyberpot.io>"
+LABEL version="24.04.1"
+LABEL description="CyberPot Digital Forensics Collector"
+LABEL component="forensics_collector"
+
+# ================================================================================================
+# SYSTEM DEPENDENCIES
+# ================================================================================================
+
+# Install forensics and analysis tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Core forensics tools
+    autopsy \
+    sleuthkit \
+    volatility3 \
+    volatility-tools \
+    \
+    # Network forensics
+    tcpdump \
+    wireshark \
+    tshark \
+    ngrep \
+    \
+    # File analysis
+    binwalk \
+    foremost \
+    scalpel \
+    exiftool \
+    file \
+    \
+    # Memory forensics
+    liME \
+    volatility \
+    \
+    # Log analysis
+    log2timeline \
+    plaso \
+    \
+    # Development and system tools
+    python3 \
+    python3-pip \
+    python3-venv \
+    curl \
+    wget \
+    git \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    \
+    # Database tools
+    postgresql-client \
+    mysql-client \
+    sqlite3 \
+    \
+    # Archive and compression tools
+    p7zip-full \
+    unzip \
+    tar \
+    gzip \
+    bzip2 \
+    \
+    # Text processing
+    grep \
+    sed \
+    awk \
+    \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/*
+
+# ================================================================================================
+# PYTHON ENVIRONMENT SETUP
+# ================================================================================================
+
+# Create Python virtual environment
+ENV PYTHON_VENV=/opt/venv
+RUN python3 -m venv ${PYTHON_VENV}
+ENV PATH="${PYTHON_VENV}/bin:$PATH"
+
+# Install Python packages for forensics analysis
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+        requests \
+        python-dateutil \
+        pytz \
+        structlog \
+        pydantic \
+        fastapi \
+        uvicorn \
+        elasticsearch \
+        redis \
+        celery \
+        python-multipart \
+        pandas \
+        numpy \
+        matplotlib \
+        scikit-learn \
+        networkx \
+        python-magic \
+        pyewf \
+        pytsk3 \
+        pyaff4
+
+# ================================================================================================
+# APPLICATION SETUP
+# ================================================================================================
+
+# Create application user and directories
+RUN groupadd -g 1003 cyberpot && \
+    useradd -u 1003 -g cyberpot -m -s /bin/bash cyberpot
+
+# Create application directories
+RUN mkdir -p /app /app/evidence /app/reports /app/logs /app/config /app/cases && \
+    chown -R cyberpot:cyberpot /app
+
+# Copy application code
+COPY enterprise/security-tools/forensics/ /app/
+
+# Set working directory
+WORKDIR /app
+
+# ================================================================================================
+# SECURITY HARDENING
+# ================================================================================================
+
+# Configure security limits for forensics tools
+RUN echo "cyberpot soft nofile 65536" >> /etc/security/limits.conf && \
+    echo "cyberpot hard nofile 65536" >> /etc/security/limits.conf && \
+    echo "cyberpot soft nproc 4096" >> /etc/security/limits.conf && \
+    echo "cyberpot hard nproc 4096" >> /etc/security/limits.conf
+
+# Configure sudo access for forensics tools
+RUN echo "cyberpot ALL=(ALL) NOPASSWD: /usr/bin/tcpdump, /usr/bin/wireshark, /usr/bin/volatility" > /etc/sudoers.d/cyberpot-forensics && \
+    chmod 440 /etc/sudoers.d/cyberpot-forensics
+
+# Create AppArmor profile for forensics collector
+RUN echo "#include <tunables/global>" > /etc/apparmor.d/cyberpot-forensics && \
+    echo "profile cyberpot-forensics flags=(attach_disconnected,mediate_deleted) {" >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  #include <abstractions/base>" >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  #include <abstractions/python>" >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  /app/** rwk," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  /tmp/** rwk," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  /proc/*/cmdline r," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  /proc/*/environ r," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  /proc/*/fd/* r," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  /sys/devices/system/cpu/online r," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  network inet raw," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  network inet stream," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  capability net_raw," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "  capability sys_ptrace," >> /etc/apparmor.d/cyberpot-forensics && \
+    echo "}" >> /etc/apparmor.d/cyberpot-forensics
+
+# ================================================================================================
+# ENVIRONMENT VARIABLES
+# ================================================================================================
+
+ENV CYBERPOT_FORENSICS_VERSION=24.04.1
+ENV LOG_LEVEL=INFO
+ENV EVIDENCE_DIR=/app/evidence
+ENV REPORTS_DIR=/app/reports
+ENV CASES_DIR=/app/cases
+ENV ELASTICSEARCH_HOSTS=elasticsearch:9200
+ENV REDIS_HOST=redis:6379
+
+# API Configuration
+ENV API_HOST=0.0.0.0
+ENV API_PORT=8003
+
+# Forensics settings
+ENV MAX_EVIDENCE_SIZE=1GB
+ENV RETENTION_DAYS=90
+ENV AUTO_ANALYZE=true
+ENV PARALLEL_ANALYSIS=2
+
+# Security settings
+ENV ENABLE_TLS=false
+ENV TLS_CERT_PATH=""
+ENV TLS_KEY_PATH=""
+
+# ================================================================================================
+# HEALTH CHECK
+# ================================================================================================
+
+# Add health check script
+COPY docker/templates/healthcheck-forensics.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+HEALTHCHECK --interval=60s --timeout=30s --start-period=60s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh || exit 1
+
+# ================================================================================================
+# PORTS AND VOLUMES
+# ================================================================================================
+
+EXPOSE 8003
+
+VOLUME ["/app/evidence", "/app/reports", "/app/cases", "/app/logs", "/app/config"]
+
+# ================================================================================================
+# ENTRYPOINT
+# ================================================================================================
+
+# Switch to cyberpot user
+USER cyberpot
+
+# Create entrypoint script
+RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
+    echo 'set -e' >> /app/entrypoint.sh && \
+    echo 'echo "Starting CyberPot Digital Forensics Collector..."' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Create necessary directories' >> /app/entrypoint.sh && \
+    echo 'mkdir -p /app/evidence /app/reports /app/cases /app/logs' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Initialize forensics configuration if not exists' >> /app/entrypoint.sh && \
+    echo 'if [ ! -f /app/config/forensics_config.yml ]; then' >> /app/entrypoint.sh && \
+    echo '  echo "Creating default forensics configuration..."' >> /app/entrypoint.sh && \
+    echo '  cp /app/config/forensics_config.yml.example /app/config/forensics_config.yml 2>/dev/null || echo "Default config not found"' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Start the forensics collector' >> /app/entrypoint.sh && \
+    echo 'exec python forensics_collector.py' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# ================================================================================================
+# METADATA
+# ================================================================================================
+
+ARG BUILD_DATE
+ARG GIT_COMMIT
+
+LABEL build_date="${BUILD_DATE}"
+LABEL git_commit="${GIT_COMMIT}"

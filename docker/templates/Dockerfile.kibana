@@ -1,0 +1,143 @@
+# ================================================================================================
+# CyberPot Kibana Dockerfile Template
+# Kibana service for data visualization and dashboard management
+# ================================================================================================
+
+ARG BASE_IMAGE=ubuntu:22.04
+FROM ${BASE_IMAGE}
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set metadata
+LABEL maintainer="CyberPot Team <team@cyberpot.io>"
+LABEL version="24.04.1"
+LABEL description="CyberPot Kibana Service"
+LABEL component="kibana"
+
+# ================================================================================================
+# KIBANA INSTALLATION
+# ================================================================================================
+
+# Install Kibana prerequisites
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    gnupg \
+    lsb-release \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Import Elasticsearch GPG key and add repository
+RUN wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add - && \
+    echo "deb https://artifacts.elastic.co/packages/8.x/apt stable main" | tee /etc/apt/sources.list.d/elastic-8.x.list
+
+# Install Kibana
+RUN apt-get update && apt-get install -y kibana && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ================================================================================================
+# KIBANA CONFIGURATION
+# ================================================================================================
+
+# Create kibana user and directories
+RUN mkdir -p /var/lib/kibana /var/log/kibana /etc/kibana && \
+    chown -R kibana:kibana /var/lib/kibana /var/log/kibana /etc/kibana
+
+# Copy Kibana configuration
+COPY docker/templates/kibana.yml /etc/kibana/kibana.yml
+
+# Set proper permissions
+RUN chown kibana:kibana /etc/kibana/kibana.yml && \
+    chmod 644 /etc/kibana/kibana.yml
+
+# ================================================================================================
+# SECURITY HARDENING
+# ================================================================================================
+
+# Configure security settings
+RUN echo "kibana soft nofile 65536" >> /etc/security/limits.conf && \
+    echo "kibana hard nofile 65536" >> /etc/security/limits.conf && \
+    echo "kibana soft nproc 4096" >> /etc/security/limits.conf && \
+    echo "kibana hard nproc 4096" >> /etc/security/limits.conf
+
+# ================================================================================================
+# ENVIRONMENT VARIABLES
+# ================================================================================================
+
+ENV KB_HOME=/usr/share/kibana
+ENV KB_PATH_CONF=/etc/kibana
+
+# Kibana server settings
+ENV SERVER_HOST=0.0.0.0
+ENV SERVER_PORT=5601
+ENV SERVER_NAME=cyberpot-kibana
+
+# Elasticsearch connection
+ENV ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+ENV ELASTICSEARCH_USERNAME=kibana_system
+ENV ELASTICSEARCH_PASSWORD=changeme
+
+# Security settings
+ENV XPACK_SECURITY_ENABLED=true
+ENV XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=changeme
+ENV XPACK_REPORTING_ENCRYPTIONKEY=changeme
+
+# Performance settings
+ENV SERVER_MAXPAYLOADBYTES=10485760
+ENV SERVER_REQUESTTIMEOUT=300000
+
+# ================================================================================================
+# HEALTH CHECK
+# ================================================================================================
+
+# Add health check script
+COPY docker/templates/healthcheck-kibana.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh || exit 1
+
+# ================================================================================================
+# PORTS AND VOLUMES
+# ================================================================================================
+
+EXPOSE 5601
+
+VOLUME ["/var/lib/kibana", "/var/log/kibana"]
+
+# ================================================================================================
+# ENTRYPOINT
+# ================================================================================================
+
+# Switch to kibana user
+USER kibana
+WORKDIR /usr/share/kibana
+
+# Create entrypoint script
+RUN echo '#!/bin/bash' > /usr/share/kibana/entrypoint.sh && \
+    echo 'set -e' >> /usr/share/kibana/entrypoint.sh && \
+    echo 'echo "Starting Kibana..."' >> /usr/share/kibana/entrypoint.sh && \
+    echo '' >> /usr/share/kibana/entrypoint.sh && \
+    echo '# Wait for Elasticsearch to be available' >> /usr/share/kibana/entrypoint.sh && \
+    echo 'echo "Waiting for Elasticsearch..."' >> /usr/share/kibana/entrypoint.sh && \
+    echo 'until curl -s -f http://elasticsearch:9200/_cluster/health > /dev/null 2>&1; do' >> /usr/share/kibana/entrypoint.sh && \
+    echo '  echo "Elasticsearch not ready, waiting..."' >> /usr/share/kibana/entrypoint.sh && \
+    echo '  sleep 5' >> /usr/share/kibana/entrypoint.sh && \
+    echo 'done' >> /usr/share/kibana/entrypoint.sh && \
+    echo 'echo "Elasticsearch is ready!"' >> /usr/share/kibana/entrypoint.sh && \
+    echo '' >> /usr/share/kibana/entrypoint.sh && \
+    echo 'exec /usr/share/kibana/bin/kibana' >> /usr/share/kibana/entrypoint.sh && \
+    chmod +x /usr/share/kibana/entrypoint.sh
+
+ENTRYPOINT ["/usr/share/kibana/entrypoint.sh"]
+
+# ================================================================================================
+# METADATA
+# ================================================================================================
+
+ARG BUILD_DATE
+ARG GIT_COMMIT
+
+LABEL build_date="${BUILD_DATE}"
+LABEL git_commit="${GIT_COMMIT}"

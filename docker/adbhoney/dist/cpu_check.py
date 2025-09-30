@@ -35,8 +35,12 @@ print(f"Average CPU Usage of PID {pid} over 3 seconds: {average_cpu_usage}%")
 
 # Check average CPU usage against the threshold
 if average_cpu_usage >= cpu_threshold:
-    print(f"Average CPU usage of PID {pid} is above or equal to the threshold of {cpu_threshold}%.")
+    print(
+        f"Average CPU usage of PID {pid} is above or equal to the threshold of {cpu_threshold}%."
+    )
     sys.exit(1)
 else:
-    print(f"Average CPU usage of PID {pid} is below the threshold of {cpu_threshold}%. Exiting with code 0.")
+    print(
+        f"Average CPU usage of PID {pid} is below the threshold of {cpu_threshold}%. Exiting with code 0."
+    )
     sys.exit(0)

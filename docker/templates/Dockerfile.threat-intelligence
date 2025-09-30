@@ -1,0 +1,171 @@
+# ================================================================================================
+# CyberPot Threat Intelligence Collector Dockerfile Template
+# Service for collecting and analyzing threat intelligence data
+# ================================================================================================
+
+ARG BASE_IMAGE=python:3.10-slim
+FROM ${BASE_IMAGE}
+
+# Set metadata
+LABEL maintainer="CyberPot Team <team@cyberpot.io>"
+LABEL version="24.04.1"
+LABEL description="CyberPot Threat Intelligence Collector"
+LABEL component="threat_intelligence"
+
+# ================================================================================================
+# PYTHON ENVIRONMENT SETUP
+# ================================================================================================
+
+# Set Python environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONHASHSEED=random
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    wget \
+    gnupg \
+    git \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ================================================================================================
+# APPLICATION SETUP
+# ================================================================================================
+
+# Create application user and directories
+RUN groupadd -g 1001 cyberpot && \
+    useradd -u 1001 -g cyberpot -m -s /bin/bash cyberpot
+
+# Create application directories
+RUN mkdir -p /app /app/data /app/logs /app/config /app/reports && \
+    chown -R cyberpot:cyberpot /app
+
+# Copy application code
+COPY enterprise/security-tools/threat-intelligence/ /app/
+
+# Set working directory
+WORKDIR /app
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt || \
+    pip install --no-cache-dir \
+        requests \
+        beautifulsoup4 \
+        lxml \
+        aiohttp \
+        asyncio \
+        python-dateutil \
+        pytz \
+        structlog \
+        pydantic \
+        fastapi \
+        uvicorn \
+        elasticsearch \
+        redis \
+        celery \
+        python-multipart
+
+# ================================================================================================
+# SECURITY HARDENING
+# ================================================================================================
+
+# Create security configurations
+RUN echo "cyberpot soft nofile 65536" >> /etc/security/limits.conf && \
+    echo "cyberpot hard nofile 65536" >> /etc/security/limits.conf && \
+    echo "cyberpot soft nproc 4096" >> /etc/security/limits.conf && \
+    echo "cyberpot hard nproc 4096" >> /etc/security/limits.conf
+
+# Configure AppArmor profile for threat intelligence
+RUN echo "#include <tunables/global>" > /etc/apparmor.d/cyberpot-threatintel && \
+    echo "profile cyberpot-threatintel flags=(attach_disconnected,mediate_deleted) {" >> /etc/apparmor.d/cyberpot-threatintel && \
+    echo "  #include <abstractions/base>" >> /etc/apparmor.d/cyberpot-threatintel && \
+    echo "  #include <abstractions/python>" >> /etc/apparmor.d/cyberpot-threatintel && \
+    echo "  /app/** rwk," >> /etc/apparmor.d/cyberpot-threatintel && \
+    echo "  /tmp/** rwk," >> /etc/apparmor.d/cyberpot-threatintel && \
+    echo "  network inet dgram," >> /etc/apparmor.d/cyberpot-threatintel && \
+    echo "  network inet stream," >> /etc/apparmor.d/cyberpot-threatintel && \
+    echo "  capability net_bind_service," >> /etc/apparmor.d/cyberpot-threatintel && \
+    echo "}" >> /etc/apparmor.d/cyberpot-threatintel
+
+# ================================================================================================
+# ENVIRONMENT VARIABLES
+# ================================================================================================
+
+ENV CYBERPOT_THREATINTEL_VERSION=24.04.1
+ENV LOG_LEVEL=INFO
+ENV THREATINTEL_UPDATE_INTERVAL=3600
+ENV THREATINTEL_SOURCES_FILE=/app/config/threat_sources.yml
+ENV THREATINTEL_CACHE_DIR=/app/data/cache
+ENV THREATINTEL_REPORTS_DIR=/app/reports
+ENV ELASTICSEARCH_HOSTS=elasticsearch:9200
+ENV REDIS_HOST=redis:6379
+
+# API Configuration
+ENV API_HOST=0.0.0.0
+ENV API_PORT=8001
+
+# Security settings
+ENV ENABLE_TLS=false
+ENV TLS_CERT_PATH=""
+ENV TLS_KEY_PATH=""
+
+# ================================================================================================
+# HEALTH CHECK
+# ================================================================================================
+
+# Add health check script
+COPY docker/templates/healthcheck-threatintel.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh || exit 1
+
+# ================================================================================================
+# PORTS AND VOLUMES
+# ================================================================================================
+
+EXPOSE 8001
+
+VOLUME ["/app/data", "/app/logs", "/app/reports", "/app/config"]
+
+# ================================================================================================
+# ENTRYPOINT
+# ================================================================================================
+
+# Switch to cyberpot user
+USER cyberpot
+
+# Create entrypoint script
+RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
+    echo 'set -e' >> /app/entrypoint.sh && \
+    echo 'echo "Starting CyberPot Threat Intelligence Collector..."' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Create necessary directories' >> /app/entrypoint.sh && \
+    echo 'mkdir -p /app/data/cache /app/reports /app/logs' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Initialize threat intelligence sources if not exists' >> /app/entrypoint.sh && \
+    echo 'if [ ! -f /app/config/threat_sources.yml ]; then' >> /app/entrypoint.sh && \
+    echo '  echo "Creating default threat sources configuration..."' >> /app/entrypoint.sh && \
+    echo '  cp /app/config/threat_sources.yml.example /app/config/threat_sources.yml 2>/dev/null || echo "Default config not found"' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Start the threat intelligence collector' >> /app/entrypoint.sh && \
+    echo 'exec python threat_collector.py' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# ================================================================================================
+# METADATA
+# ================================================================================================
+
+ARG BUILD_DATE
+ARG GIT_COMMIT
+
+LABEL build_date="${BUILD_DATE}"
+LABEL git_commit="${GIT_COMMIT}"

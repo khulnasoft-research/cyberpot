@@ -1,0 +1,317 @@
+# CyberPot Installation Role
+# Downloads and installs CyberPot with proper configuration
+
+- name: Create CyberPot installation directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ cyberpot_user | default('cyberpot') }}"
+    group: "{{ cyberpot_group | default('cyberpot') }}"
+    mode: '0755'
+  loop:
+    - "{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot"
+    - "{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot/data"
+    - "{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts"
+    - "{{ cyberpot_base_dir | default('/home/cyberpot') }}/backups"
+
+- name: Clone CyberPot repository
+  git:
+    repo: https://github.com/khulnasoft/cyberpot.git
+    dest: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot"
+    version: "{{ cyberpot_version | default('master') }}"
+    force: yes
+  become_user: "{{ cyberpot_user | default('cyberpot') }}"
+
+- name: Generate random passwords for CyberPot users
+  shell: |
+    # Generate web user password
+    WEB_PASS=$(openssl rand -base64 12)
+    echo "cyberpot:$(echo -n "cyberpot:$WEB_PASS" | md5sum | cut -d' ' -f1)" | base64 -w 0 > /tmp/web_user.txt
+
+    # Generate Logstash user password
+    LS_PASS=$(openssl rand -base64 12)
+    echo "logstash:$(echo -n "logstash:$LS_PASS" | md5sum | cut -d' ' -f1)" | base64 -w 0 > /tmp/ls_web_user.txt
+
+    # Store passwords for later use
+    echo "$WEB_PASS" > /tmp/web_password.txt
+    echo "$LS_PASS" > /tmp/ls_password.txt
+  args:
+    creates: /tmp/web_user.txt
+
+- name: Create CyberPot .env configuration file
+  template:
+    src: cyberpot.env.j2
+    dest: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot/.env"
+    owner: "{{ cyberpot_user | default('cyberpot') }}"
+    group: "{{ cyberpot_group | default('cyberpot') }}"
+    mode: '0600'
+
+- name: Set up data directory permissions
+  file:
+    path: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot/data"
+    state: directory
+    owner: "{{ cyberpot_user | default('cyberpot') }}"
+    group: "{{ cyberpot_group | default('cyberpot') }}"
+    mode: '0755'
+    recurse: yes
+
+- name: Create CyberPot service file
+  copy:
+    dest: /etc/systemd/system/cyberpot.service
+    content: |
+      [Unit]
+      Description=CyberPot Honeypot Platform
+      After=docker.service network.target
+      Requires=docker.service
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory={{ cyberpot_base_dir | default("/home/cyberpot") }}/cyberpot
+      ExecStart=/usr/bin/docker compose up -d
+      ExecStop=/usr/bin/docker compose down
+      ExecReload=/usr/bin/docker compose restart
+      User={{ cyberpot_user | default("cyberpot") }}
+      Group={{ cyberpot_group | default("cyberpot") }}
+      TimeoutStartSec=300
+      TimeoutStopSec=300
+      Environment=DOCKER_CLIENT_TIMEOUT=300
+      Environment=COMPOSE_HTTP_TIMEOUT=300
+
+      # Security settings
+      NoNewPrivileges=true
+      PrivateTmp=true
+      ProtectSystem=strict
+      ProtectHome=true
+      ReadWritePaths={{ cyberpot_base_dir | default("/home/cyberpot") }}/cyberpot/data
+      ReadWritePaths={{ cyberpot_base_dir | default("/home/cyberpot") }}/cyberpot/backups
+
+      [Install]
+      WantedBy=multi-user.target
+    mode: '0644'
+
+- name: Enable CyberPot service
+  systemd:
+    name: cyberpot
+    enabled: yes
+    daemon_reload: yes
+
+- name: Create log rotation configuration for CyberPot
+  copy:
+    dest: /etc/logrotate.d/cyberpot
+    content: |
+      {{ cyberpot_base_dir | default("/home/cyberpot") }}/cyberpot/data/**/*.log {
+          daily
+          rotate 30
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 644 {{ cyberpot_user | default("cyberpot") }} {{ cyberpot_group | default("cyberpot") }}
+          postrotate
+              docker compose restart cyberpotinit 2>/dev/null || systemctl reload cyberpot 2>/dev/null || true
+          endscript
+      }
+    mode: '0644'
+
+- name: Create CyberPot management scripts
+  copy:
+    dest: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh"
+    content: |
+      #!/bin/bash
+      # CyberPot Management Script
+
+      CYBERPOT_DIR="{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot"
+
+      case "$1" in
+        start)
+          echo "Starting CyberPot..."
+          cd "$CYBERPOT_DIR"
+          systemctl start cyberpot
+          ;;
+        stop)
+          echo "Stopping CyberPot..."
+          cd "$CYBERPOT_DIR"
+          systemctl stop cyberpot
+          ;;
+        restart)
+          echo "Restarting CyberPot..."
+          cd "$CYBERPOT_DIR"
+          systemctl restart cyberpot
+          ;;
+        status)
+          echo "CyberPot Status:"
+          systemctl status cyberpot --no-pager
+          echo -e "\nDocker Containers:"
+          docker ps -a --filter "name=cyberpot" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          ;;
+        logs)
+          echo "Recent CyberPot Logs:"
+          docker compose logs --tail=50
+          ;;
+        backup)
+          echo "Creating CyberPot backup..."
+          BACKUP_DIR="{{ cyberpot_base_dir | default('/home/cyberpot') }}/backups"
+          DATE=$(date +%Y%m%d_%H%M%S)
+          cd "$CYBERPOT_DIR"
+          systemctl stop cyberpot
+          tar -czf "$BACKUP_DIR/cyberpot_backup_$DATE.tar.gz" \
+              --exclude=data/elasticsearch \
+              --exclude=data/logstash/data \
+              .env data/
+          systemctl start cyberpot
+          echo "Backup created: $BACKUP_DIR/cyberpot_backup_$DATE.tar.gz"
+          ;;
+        update)
+          echo "Updating CyberPot..."
+          cd "$CYBERPOT_DIR"
+          git pull
+          systemctl restart cyberpot
+          ;;
+        *)
+          echo "Usage: $0 {start|stop|restart|status|logs|backup|update}"
+          exit 1
+      esac
+    mode: '0755'
+
+- name: Create CyberPot status monitoring script
+  copy:
+    dest: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-monitor.sh"
+    content: |
+      #!/bin/bash
+      # CyberPot Monitoring Script
+
+      CYBERPOT_DIR="{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot"
+
+      echo "=== CyberPot System Status ==="
+      echo "Date: $(date)"
+      echo "Uptime: $(uptime -p)"
+      echo "Load Average: $(uptime | awk -F'load average:' '{print $2}')"
+      echo "Memory Usage: $(free -h | awk 'NR==2{printf "%.1f%%", $3*100/$2 }')"
+      echo "Disk Usage: $(df -h {{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot | awk 'NR==2{print $5} used")"
+
+      echo -e "\n=== CyberPot Service Status ==="
+      systemctl is-active cyberpot && echo "✓ CyberPot service is running" || echo "✗ CyberPot service is not running"
+
+      echo -e "\n=== Docker Containers ==="
+      docker ps -a --filter "name=cyberpot" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Size}}" || echo "No CyberPot containers found"
+
+      echo -e "\n=== Recent Activity (Last 10 lines) ==="
+      tail -10 {{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot/data/cyberpotinit.log 2>/dev/null || echo "No logs found yet"
+
+      echo -e "\n=== Network Connections ==="
+      ss -tuln | grep -E ':({{ ssh_port | default(64295) }}|{{ web_port | default(64297) }}|6[0-4][0-9][0-9][0-9])' || echo "No CyberPot ports found"
+
+      echo -e "\n=== System Resources ==="
+      echo "Top processes by CPU:"
+      ps aux --sort=-%cpu | head -6
+      echo -e "\nTop processes by Memory:"
+      ps aux --sort=-%mem | head -6
+    mode: '0755'
+
+- name: Create CyberPot documentation
+  template:
+    src: CYBERPOT_README.md.j2
+    dest: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/CYBERPOT_README.md"
+    owner: "{{ cyberpot_user | default('cyberpot') }}"
+    group: "{{ cyberpot_group | default('cyberpot') }}"
+    mode: '0644'
+
+- name: Set up daily maintenance cron job
+  cron:
+    name: "CyberPot Daily Maintenance"
+    minute: "42"
+    hour: "2"
+    job: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh stop && docker container prune -f && docker image prune -f && docker volume prune -f && {{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh start"
+    user: "{{ cyberpot_user | default('cyberpot') }}"
+
+- name: Create deployment verification script
+  copy:
+    dest: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/verify-deployment.sh"
+    content: |
+      #!/bin/bash
+      # CyberPot Deployment Verification Script
+
+      echo "=== CyberPot Deployment Verification ==="
+      echo "Timestamp: $(date)"
+
+      ERRORS=0
+
+      # Check if CyberPot user exists
+      if id "{{ cyberpot_user | default('cyberpot') }}" >/dev/null 2>&1; then
+        echo "✓ CyberPot user exists"
+      else
+        echo "✗ CyberPot user does not exist"
+        ((ERRORS++))
+      fi
+
+      # Check if CyberPot directory exists
+      if [ -d "{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot" ]; then
+        echo "✓ CyberPot directory exists"
+      else
+        echo "✗ CyberPot directory does not exist"
+        ((ERRORS++))
+      fi
+
+      # Check if .env file exists
+      if [ -f "{{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot/.env" ]; then
+        echo "✓ CyberPot configuration file exists"
+      else
+        echo "✗ CyberPot configuration file does not exist"
+        ((ERRORS++))
+      fi
+
+      # Check if Docker is running
+      if systemctl is-active docker >/dev/null 2>&1; then
+        echo "✓ Docker service is running"
+      else
+        echo "✗ Docker service is not running"
+        ((ERRORS++))
+      fi
+
+      # Check if CyberPot service is enabled
+      if systemctl is-enabled cyberpot >/dev/null 2>&1; then
+        echo "✓ CyberPot service is enabled"
+      else
+        echo "✗ CyberPot service is not enabled"
+        ((ERRORS++))
+      fi
+
+      # Check if firewall is configured
+      if ufw status | grep -q "Status: active"; then
+        echo "✓ UFW firewall is active"
+      else
+        echo "✗ UFW firewall is not active"
+        ((ERRORS++))
+      fi
+
+      # Check if required ports are open
+      for port in {{ ssh_port | default(64295) }} {{ web_port | default(64297) }}; do
+        if ss -tuln | grep -q ":$port "; then
+          echo "✓ Port $port is listening"
+        else
+          echo "✗ Port $port is not listening"
+          ((ERRORS++))
+        fi
+      done
+
+      echo -e "\n=== Verification Summary ==="
+      if [ $ERRORS -eq 0 ]; then
+        echo "✓ All checks passed! CyberPot deployment appears successful."
+        exit 0
+      else
+        echo "✗ Found $ERRORS error(s). Please check the deployment."
+        exit 1
+      fi
+    mode: '0755'
+
+- name: Run deployment verification
+  command: "{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/verify-deployment.sh"
+  register: verification_result
+  changed_when: false
+  failed_when: verification_result.rc != 0
+
+- name: Display verification results
+  debug:
+    msg: "{{ verification_result.stdout_lines }}"

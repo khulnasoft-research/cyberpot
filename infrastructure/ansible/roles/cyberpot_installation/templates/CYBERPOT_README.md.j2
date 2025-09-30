@@ -1,0 +1,247 @@
+# CyberPot Deployment Documentation
+
+## 🚀 Deployment Summary
+
+**Deployment Date:** {{ ansible_date_time.iso8601 }}
+**Environment:** {{ cyberpot_environment }}
+**CyberPot Version:** {{ cyberpot_version }}
+**Deployment Type:** {{ cyberpot_type | default('HIVE') }}
+**Server IP:** {{ ansible_default_ipv4.address }}
+
+## 🔐 Access Credentials
+
+### Web Interface
+- **URL:** https://{{ ansible_default_ipv4.address }}:{{ web_port | default(64297) }}
+- **Username:** cyberpot
+- **Password:** {{ lookup('file', '/tmp/web_password.txt') }}
+
+### SSH Access
+- **Command:** ssh -l {{ cyberpot_user | default('cyberpot') }} -p {{ ssh_port | default(64295) }} {{ ansible_default_ipv4.address }}
+- **Username:** {{ cyberpot_user | default('cyberpot') }}
+- **Authentication:** SSH Key (Password authentication disabled)
+
+### Logstash Interface
+- **Password:** {{ lookup('file', '/tmp/ls_password.txt') }}
+
+## 📋 Management Commands
+
+### Service Management
+```bash
+# Check status
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh status
+
+# Start CyberPot
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh start
+
+# Stop CyberPot
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh stop
+
+# Restart CyberPot
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh restart
+
+# View logs
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh logs
+```
+
+### Monitoring and Maintenance
+```bash
+# System monitoring
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-monitor.sh
+
+# Create backup
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh backup
+
+# Update CyberPot
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh update
+
+# Verify deployment
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/verify-deployment.sh
+```
+
+## 🔧 Configuration Details
+
+### Network Configuration
+- **SSH Port:** {{ ssh_port | default(64295) }}
+- **Web UI Port:** {{ web_port | default(64297) }}
+- **Honeypot Ports:** 1-64000 (TCP & UDP)
+- **Firewall:** UFW (Uncomplicated Firewall)
+
+### Directory Structure
+```
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/
+├── cyberpot/           # Main CyberPot installation
+│   ├── .env           # Configuration file
+│   ├── docker-compose.yml
+│   └── data/          # Persistent data and logs
+├── backups/           # Automated backups
+├── scripts/           # Management scripts
+└── CYBERPOT_README.md # This file
+```
+
+### Services Running
+- **Docker:** Container runtime
+- **CyberPot:** Main honeypot platform
+- **UFW:** Firewall
+- **Fail2Ban:** SSH protection
+- **Auditd:** Security auditing
+- **Cron:** Scheduled maintenance
+
+## 🔒 Security Features
+
+### System Hardening
+- ✅ SSH configured with key-only authentication
+- ✅ Firewall rules restrict access to necessary ports
+- ✅ Automatic security updates enabled
+- ✅ Root login disabled
+- ✅ Audit logging enabled
+- ✅ Fail2Ban protection for SSH
+
+### CyberPot Security
+- ✅ All honeypot services run in containers
+- ✅ Network isolation between services
+- ✅ Encrypted data storage
+- ✅ Secure credential management
+- ✅ Regular log rotation
+
+## 📊 Monitoring and Logging
+
+### System Monitoring
+- **CloudWatch/Stackdriver:** System metrics collection
+- **Audit logs:** Security event tracking
+- **Docker logs:** Container activity
+- **UFW logs:** Firewall activity
+
+### CyberPot Monitoring
+- **Service status:** Automatic health checks
+- **Container monitoring:** Docker container status
+- **Log aggregation:** Centralized logging
+- **Performance metrics:** CPU, memory, disk usage
+
+## 🔄 Maintenance Schedule
+
+### Daily Tasks
+- **2:42 AM:** System maintenance and cleanup
+  - Docker container cleanup
+  - Log rotation
+  - System reboot (if needed)
+
+### Weekly Tasks
+- **Security updates:** Automatic package updates
+- **Backup verification:** Check backup integrity
+- **Service health check:** Verify all services running
+
+### Monthly Tasks
+- **Full system backup:** Complete system backup
+- **Security review:** Review logs and alerts
+- **Performance analysis:** Check resource usage
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+#### CyberPot Service Not Starting
+```bash
+# Check service status
+sudo systemctl status cyberpot
+
+# View detailed logs
+sudo journalctl -u cyberpot -n 50
+
+# Check Docker containers
+docker ps -a --filter "name=cyberpot"
+```
+
+#### Network Connectivity Issues
+```bash
+# Check firewall status
+sudo ufw status
+
+# Test port connectivity
+telnet {{ ansible_default_ipv4.address }} {{ web_port | default(64297) }}
+
+# Check network configuration
+ip route show
+```
+
+#### High Resource Usage
+```bash
+# Check system resources
+htop
+
+# Monitor Docker usage
+docker stats
+
+# Check disk usage
+df -h
+```
+
+### Emergency Procedures
+
+#### Stop All Services
+```bash
+sudo systemctl stop cyberpot
+sudo systemctl stop docker
+```
+
+#### View Recent Logs
+```bash
+# System logs
+sudo journalctl -n 100
+
+# CyberPot logs
+docker compose logs --tail=100
+
+# Security logs
+sudo tail -f /var/log/auth.log
+```
+
+#### Force Restart
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart cyberpot
+```
+
+## 📞 Support Information
+
+### Documentation
+- **CyberPot Docs:** https://github.com/khulnasoft/cyberpot
+- **Issues:** https://github.com/khulnasoft/cyberpot/issues
+- **Discussions:** https://github.com/khulnasoft/cyberpot/discussions
+
+### Emergency Contacts
+- **System Admin:** [Configure contact information]
+- **Security Team:** [Configure contact information]
+- **Backup Admin:** [Configure contact information]
+
+## 🔄 Update Procedures
+
+### Minor Updates
+```bash
+cd {{ cyberpot_base_dir | default('/home/cyberpot') }}/cyberpot
+git pull origin main
+{{ cyberpot_base_dir | default('/home/cyberpot') }}/scripts/cyberpot-manage.sh restart
+```
+
+### Major Version Updates
+1. Create full backup
+2. Review release notes
+3. Test in staging environment
+4. Update production instance
+5. Verify functionality
+
+### Rollback Procedures
+1. Stop CyberPot services
+2. Restore from backup
+3. Verify configuration
+4. Restart services
+
+---
+
+**⚠️ Important Notes:**
+- Store passwords securely and rotate regularly
+- Monitor system resources and scale as needed
+- Keep regular backups of configuration and data
+- Review logs regularly for security events
+- Test disaster recovery procedures periodically
+
+**Deployment completed at:** {{ ansible_date_time.iso8601 }}

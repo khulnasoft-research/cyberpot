@@ -1,0 +1,19 @@
+{
+  "variables": {
+    "aws_region": "us-east-1",
+    "cyberpot_version": "24.04.1",
+    "environment": "production",
+    "instance_type": "t3.medium",
+    "base_ami_id": "ami-0abcdef1234567890",
+    "security_level": "high",
+    "monitoring_enabled": "true",
+    "threat_intelligence": "true",
+    "vulnerability_scanning": "true",
+    "dark_web_monitoring": "false",
+    "ssh_username": "ubuntu",
+    "ami_name_prefix": "cyberpot",
+    "backup_retention_days": "30",
+    "log_retention_days": "90"
+  },
+  "description": "Variables for CyberPot AWS AMI creation"
+}

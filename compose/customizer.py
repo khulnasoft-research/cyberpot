@@ -1,8 +1,7 @@
 from datetime import datetime
 import yaml
 
-version = \
-"""
+version = """
  ____  [CyberPot]         _            ____        _ _     _
 / ___|  ___ _ ____   _(_) ___ ___  | __ ) _   _(_) | __| | ___ _ __
 \___ \ / _ \ '__\ \ / / |/ __/ _ \ |  _ \| | | | | |/ _` |/ _ \ '__|
@@ -16,8 +15,7 @@ version = \
 # Review the resulting docker-compose-custom.yml and adjust to your needs by (un)commenting the corresponding lines in the config.
 """
 
-header = \
-"""# CyberPot: CUSTOM EDITION
+header = """# CyberPot: CUSTOM EDITION
 # Generated on: {current_date}
 """
 
@@ -27,7 +25,7 @@ service_filename = "docker-compose-custom.yml"
 
 def load_config(filename):
     try:
-        with open(filename, 'r') as file:
+        with open(filename, "r") as file:
             config = yaml.safe_load(file)
     except:
         print_color(f"Error: {filename} not found. Exiting.", "red")
@@ -38,9 +36,10 @@ def load_config(filename):
 def prompt_service_include(service_name):
     while True:
         try:
-            response = input(f"Include {service_name}? (y/n): ").strip().lower()
-            if response in ['y', 'n']:
-                return response == 'y'
+            response = input(
+                f"Include {service_name}? (y/n): ").strip().lower()
+            if response in ["y", "n"]:
+                return response == "y"
             else:
                 print_color("Please enter 'y' for yes or 'n' for no.", "red")
         except KeyboardInterrupt:
@@ -55,16 +54,22 @@ def check_port_conflicts(selected_services):
     conflict_ports = []
 
     for service_name, config in selected_services.items():
-        ports = config.get('ports', [])
+        ports = config.get("ports", [])
         for port in ports:
             # Split the port mapping and take only the host port part
-            parts = port.split(':')
-            host_port = parts[1] if len(parts) == 3 else (parts[0] if parts[1].isdigit() else parts[1])
+            parts = port.split(":")
+            host_port = (
+                parts[1]
+                if len(parts) == 3
+                else (parts[0] if parts[1].isdigit() else parts[1])
+            )
 
             # Check for port conflict and associate it with the service name
             if host_port in all_ports:
                 conflict_ports.append((service_name, host_port))
-                if all_ports[host_port] not in [service for service, _ in conflict_ports]:
+                if all_ports[host_port] not in [
+                    service for service, _ in conflict_ports
+                ]:
                     conflict_ports.append((all_ports[host_port], host_port))
             else:
                 all_ports[host_port] = service_name
@@ -77,7 +82,6 @@ def check_port_conflicts(selected_services):
     return False
 
 
-
 def print_color(text, color):
     colors = {
         "red": "\033[91m",
@@ -88,37 +92,53 @@ def print_color(text, color):
     }
     print(f"{colors[color]}{text}{colors['end']}")
 
+
 def enforce_dependencies(selected_services, services):
     # If snare or any tanner services are selected, ensure all are enabled
-    tanner_services = {'snare', 'tanner', 'tanner_redis', 'tanner_phpox', 'tanner_api'}
+    tanner_services = {"snare", "tanner",
+                       "tanner_redis", "tanner_phpox", "tanner_api"}
     if tanner_services.intersection(selected_services):
-        print_color("[OK] - For Snare / Tanner to work all required services have been added to your configuration.", "green")
+        print_color(
+            "[OK] - For Snare / Tanner to work all required services have been added to your configuration.",
+            "green",
+        )
         for service in tanner_services:
             selected_services[service] = services[service]
 
     # If kibana is enabled, also enable elasticsearch
-    if 'kibana' in selected_services:
-        selected_services['elasticsearch'] = services['elasticsearch']
-        print_color("[OK] - Kibana requires Elasticsearch which has been added to your configuration.", "green")
+    if "kibana" in selected_services:
+        selected_services["elasticsearch"] = services["elasticsearch"]
+        print_color(
+            "[OK] - Kibana requires Elasticsearch which has been added to your configuration.",
+            "green",
+        )
 
     # If spiderfoot is enabled, also enable nginx
-    if 'spiderfoot' in selected_services:
-        selected_services['nginx'] = services['nginx']
-        print_color("[OK] - Spiderfoot requires Nginx which has been added to your configuration.","green")
-
+    if "spiderfoot" in selected_services:
+        selected_services["nginx"] = services["nginx"]
+        print_color(
+            "[OK] - Spiderfoot requires Nginx which has been added to your configuration.",
+            "green",
+        )
 
     # If any map services are detected, enable logstash, elasticsearch, nginx, and all map services
-    map_services = {'map_web', 'map_redis', 'map_data'}
+    map_services = {"map_web", "map_redis", "map_data"}
     if map_services.intersection(selected_services):
-        print_color("[OK] - For AttackMap to work all required services have been added to your configuration.", "green")
-        for service in map_services.union({'elasticsearch', 'nginx'}):
+        print_color(
+            "[OK] - For AttackMap to work all required services have been added to your configuration.",
+            "green",
+        )
+        for service in map_services.union({"elasticsearch", "nginx"}):
             selected_services[service] = services[service]
 
     # honeytrap and glutton cannot be active at the same time, always vote in favor of honeytrap
-    if 'honeytrap' in selected_services and 'glutton' in selected_services:
+    if "honeytrap" in selected_services and "glutton" in selected_services:
         # Remove glutton and notify
-        del selected_services['glutton']
-        print_color("[OK] - Honeytrap and Glutton cannot be active at the same time. Glutton has been removed from your configuration.","green")
+        del selected_services["glutton"]
+        print_color(
+            "[OK] - Honeytrap and Glutton cannot be active at the same time. Glutton has been removed from your configuration.",
+            "green",
+        )
 
 
 def remove_unused_networks(selected_services, services, networks):
@@ -126,8 +146,8 @@ def remove_unused_networks(selected_services, services, networks):
     # Identify networks used by selected services
     for service_name in selected_services:
         service_config = services[service_name]
-        if 'networks' in service_config:
-            for network in service_config['networks']:
+        if "networks" in service_config:
+            for network in service_config["networks"]:
                 used_networks.add(network)
 
     # Remove unused networks
@@ -140,10 +160,12 @@ def main():
     config = load_config(config_filename)
 
     # Separate services and networks
-    services = config['services']
-    networks = config.get('networks', {})
-    selected_services = {'cyberpotinit': services['cyberpotinit'],
-                         'logstash': services['logstash']}  # Always include cyberpotinit and logstash
+    services = config["services"]
+    networks = config.get("networks", {})
+    selected_services = {
+        "cyberpotinit": services["cyberpotinit"],
+        "logstash": services["logstash"],
+    }  # Always include cyberpotinit and logstash
 
     for service_name, service_config in services.items():
         if service_name not in selected_services:  # Skip already included services
@@ -157,23 +179,36 @@ def main():
     remove_unused_networks(selected_services, services, networks)
 
     output_config = {
-        'networks': networks,
-        'services': selected_services,
+        "networks": networks,
+        "services": selected_services,
     }
 
     current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    with open(service_filename, 'w') as file:
+    with open(service_filename, "w") as file:
         file.write(header.format(current_date=current_date))
-        yaml.dump(output_config, file, default_flow_style=False, sort_keys=False, indent=2)
+        yaml.dump(
+            output_config, file, default_flow_style=False, sort_keys=False, indent=2
+        )
 
     if check_port_conflicts(selected_services):
-        print_color(f"[WARNING] - Adjust the conflicting ports in the {service_filename} or re-run the script and select services that do not occupy the same port(s).",
-            "red")
+        print_color(
+            f"[WARNING] - Adjust the conflicting ports in the {service_filename} or re-run the script and select services that do not occupy the same port(s).",
+            "red",
+        )
     else:
-        print_color(f"[OK] - Custom {service_filename} has been generated without port conflicts.", "green")
-    print_color(f"Copy {service_filename} to ~/cyberpot and test with: docker compose -f {service_filename} up", "blue")
-    print_color(f"If everything works, exit with CTRL-C and replace docker-compose.yml with the new config.", "blue")
+        print_color(
+            f"[OK] - Custom {service_filename} has been generated without port conflicts.",
+            "green",
+        )
+    print_color(
+        f"Copy {service_filename} to ~/cyberpot and test with: docker compose -f {service_filename} up",
+        "blue",
+    )
+    print_color(
+        f"If everything works, exit with CTRL-C and replace docker-compose.yml with the new config.",
+        "blue",
+    )
 
 
 if __name__ == "__main__":

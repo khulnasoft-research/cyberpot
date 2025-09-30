@@ -1,0 +1,181 @@
+# ================================================================================================
+# CyberPot Nginx Dockerfile Template
+# Nginx reverse proxy and load balancer for CyberPot services
+# ================================================================================================
+
+ARG BASE_IMAGE=ubuntu:22.04
+FROM ${BASE_IMAGE}
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set metadata
+LABEL maintainer="CyberPot Team <team@cyberpot.io>"
+LABEL version="24.04.1"
+LABEL description="CyberPot Nginx Reverse Proxy"
+LABEL component="nginx"
+
+# ================================================================================================
+# NGINX INSTALLATION
+# ================================================================================================
+
+# Install Nginx and prerequisites
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nginx \
+    nginx-extras \
+    certbot \
+    python3-certbot-nginx \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# ================================================================================================
+# NGINX CONFIGURATION
+# ================================================================================================
+
+# Create nginx directories
+RUN mkdir -p /var/cache/nginx /var/run/nginx /etc/nginx/sites-available /etc/nginx/sites-enabled /etc/nginx/ssl
+
+# Remove default nginx configuration
+RUN rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
+
+# Copy Nginx configuration files
+COPY docker/templates/nginx.conf /etc/nginx/nginx.conf
+COPY docker/templates/sites-available/cyberpot.conf /etc/nginx/sites-available/cyberpot.conf
+COPY docker/templates/sites-available/kibana.conf /etc/nginx/sites-available/kibana.conf
+COPY docker/templates/sites-available/api.conf /etc/nginx/sites-available/api.conf
+
+# Enable sites
+RUN ln -sf /etc/nginx/sites-available/cyberpot.conf /etc/nginx/sites-enabled/cyberpot.conf && \
+    ln -sf /etc/nginx/sites-available/kibana.conf /etc/nginx/sites-enabled/kibana.conf && \
+    ln -sf /etc/nginx/sites-available/api.conf /etc/nginx/sites-enabled/api.conf
+
+# Set proper permissions
+RUN chown -R www-data:www-data /var/cache/nginx /var/run/nginx /etc/nginx/sites-available /etc/nginx/sites-enabled && \
+    chown -R www-data:www-data /etc/nginx/ssl && \
+    chmod 755 /var/cache/nginx /var/run/nginx && \
+    chmod 644 /etc/nginx/nginx.conf && \
+    chmod 644 /etc/nginx/sites-available/*.conf && \
+    chmod 644 /etc/nginx/sites-enabled/*.conf
+
+# ================================================================================================
+# SSL/TLS CONFIGURATION
+# ================================================================================================
+
+# Create SSL certificate directory
+RUN mkdir -p /etc/nginx/ssl/cyberpot && \
+    chown www-data:www-data /etc/nginx/ssl/cyberpot && \
+    chmod 700 /etc/nginx/ssl/cyberpot
+
+# Create self-signed certificate for development
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/cyberpot/cyberpot.key \
+    -out /etc/nginx/ssl/cyberpot/cyberpot.crt \
+    -subj "/C=US/ST=State/L=City/O=CyberPot/CN=cyberpot.local" && \
+    chown www-data:www-data /etc/nginx/ssl/cyberpot/cyberpot.key /etc/nginx/ssl/cyberpot/cyberpot.crt && \
+    chmod 600 /etc/nginx/ssl/cyberpot/cyberpot.key && \
+    chmod 644 /etc/nginx/ssl/cyberpot/cyberpot.crt
+
+# ================================================================================================
+# SECURITY HARDENING
+# ================================================================================================
+
+# Configure security headers
+RUN echo "# Security headers configuration" > /etc/nginx/conf.d/security.conf && \
+    echo "add_header X-Frame-Options DENY;" >> /etc/nginx/conf.d/security.conf && \
+    echo "add_header X-Content-Type-Options nosniff;" >> /etc/nginx/conf.d/security.conf && \
+    echo "add_header X-XSS-Protection \"1; mode=block\";" >> /etc/nginx/conf.d/security.conf && \
+    echo "add_header Strict-Transport-Security \"max-age=31536000; includeSubDomains\";" >> /etc/nginx/conf.d/security.conf && \
+    echo "add_header Referrer-Policy \"strict-origin-when-cross-origin\";" >> /etc/nginx/conf.d/security.conf
+
+# Configure rate limiting
+RUN echo "# Rate limiting configuration" > /etc/nginx/conf.d/rate-limit.conf && \
+    echo "limit_req_zone \$binary_remote_addr zone=api:10m rate=10r/s;" >> /etc/nginx/conf.d/rate-limit.conf && \
+    echo "limit_req_zone \$binary_remote_addr zone=login:10m rate=5r/m;" >> /etc/nginx/conf.d/rate-limit.conf
+
+# ================================================================================================
+# LOGGING CONFIGURATION
+# ================================================================================================
+
+# Configure log rotation
+RUN echo "/var/log/nginx/*.log {" > /etc/logrotate.d/nginx && \
+    echo "    daily" >> /etc/logrotate.d/nginx && \
+    echo "    missingok" >> /etc/logrotate.d/nginx && \
+    echo "    rotate 30" >> /etc/logrotate.d/nginx && \
+    echo "    compress" >> /etc/logrotate.d/nginx && \
+    echo "    delaycompress" >> /etc/logrotate.d/nginx && \
+    echo "    notifempty" >> /etc/logrotate.d/nginx && \
+    echo "    create 644 www-data adm" >> /etc/logrotate.d/nginx && \
+    echo "    postrotate" >> /etc/logrotate.d/nginx && \
+    echo "        systemctl reload nginx" >> /etc/logrotate.d/nginx && \
+    echo "    endscript" >> /etc/logrotate.d/nginx && \
+    echo "}" >> /etc/logrotate.d/nginx
+
+# ================================================================================================
+# ENVIRONMENT VARIABLES
+# ================================================================================================
+
+ENV NGINX_WORKER_PROCESSES=auto
+ENV NGINX_WORKER_CONNECTIONS=1024
+ENV NGINX_CLIENT_MAX_BODY_SIZE=100M
+ENV NGINX_KEEPALIVE_TIMEOUT=65
+
+# CyberPot specific settings
+ENV CYBERPOT_WEB_PORT=64297
+ENV KIBANA_PORT=5601
+ENV API_PORT=8000
+
+# SSL settings
+ENV SSL_CERT_PATH=/etc/nginx/ssl/cyberpot/cyberpot.crt
+ENV SSL_KEY_PATH=/etc/nginx/ssl/cyberpot/cyberpot.key
+
+# ================================================================================================
+# HEALTH CHECK
+# ================================================================================================
+
+# Add health check script
+COPY docker/templates/healthcheck-nginx.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh || exit 1
+
+# ================================================================================================
+# PORTS AND VOLUMES
+# ================================================================================================
+
+EXPOSE 80 443 64297 5601 8000
+
+VOLUME ["/var/log/nginx", "/etc/nginx/ssl", "/etc/nginx/sites-enabled"]
+
+# ================================================================================================
+# ENTRYPOINT
+# ================================================================================================
+
+# Switch to www-data user
+USER www-data
+WORKDIR /var/www
+
+# Create entrypoint script
+RUN echo '#!/bin/bash' > /var/www/entrypoint.sh && \
+    echo 'set -e' >> /var/www/entrypoint.sh && \
+    echo 'echo "Starting Nginx..."' >> /var/www/entrypoint.sh && \
+    echo '' >> /var/www/entrypoint.sh && \
+    echo '# Test configuration' >> /var/www/entrypoint.sh && \
+    echo 'nginx -t' >> /var/www/entrypoint.sh && \
+    echo '' >> /var/www/entrypoint.sh && \
+    echo '# Start Nginx' >> /var/www/entrypoint.sh && \
+    echo 'exec nginx -g "daemon off;"' >> /var/www/entrypoint.sh && \
+    chmod +x /var/www/entrypoint.sh
+
+ENTRYPOINT ["/var/www/entrypoint.sh"]
+
+# ================================================================================================
+# METADATA
+# ================================================================================================
+
+ARG BUILD_DATE
+ARG GIT_COMMIT
+
+LABEL build_date="${BUILD_DATE}"
+LABEL git_commit="${GIT_COMMIT}"

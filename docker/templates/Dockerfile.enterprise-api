@@ -1,0 +1,201 @@
+# ================================================================================================
+# CyberPot Enterprise Management API Dockerfile Template
+# REST API for managing CyberPot enterprise features and integrations
+# ================================================================================================
+
+ARG BASE_IMAGE=python:3.10-slim
+FROM ${BASE_IMAGE}
+
+# Set metadata
+LABEL maintainer="CyberPot Team <team@cyberpot.io>"
+LABEL version="24.04.1"
+LABEL description="CyberPot Enterprise Management API"
+LABEL component="enterprise_api"
+
+# ================================================================================================
+# PYTHON ENVIRONMENT SETUP
+# ================================================================================================
+
+# Set Python environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONHASHSEED=random
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    wget \
+    gnupg \
+    git \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    postgresql-client \
+    mysql-client \
+    redis-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# ================================================================================================
+# APPLICATION SETUP
+# ================================================================================================
+
+# Create application user and directories
+RUN groupadd -g 1004 cyberpot && \
+    useradd -u 1004 -g cyberpot -m -s /bin/bash cyberpot
+
+# Create application directories
+RUN mkdir -p /app /app/data /app/logs /app/config /app/static /app/templates && \
+    chown -R cyberpot:cyberpot /app
+
+# Copy application code
+COPY enterprise/ /app/
+
+# Set working directory
+WORKDIR /app
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt || \
+    pip install --no-cache-dir \
+        fastapi \
+        uvicorn \
+        pydantic \
+        sqlalchemy \
+        alembic \
+        asyncpg \
+        aiomysql \
+        redis \
+        celery \
+        python-jose \
+        passlib \
+        python-multipart \
+        aiofiles \
+        jinja2 \
+        structlog \
+        python-dateutil \
+        pytz \
+        requests \
+        elasticsearch \
+        boto3 \
+        azure-identity \
+        google-cloud-compute \
+        kubernetes \
+        docker \
+        paramiko \
+        cryptography
+
+# ================================================================================================
+# SECURITY HARDENING
+# ================================================================================================
+
+# Configure security limits
+RUN echo "cyberpot soft nofile 65536" >> /etc/security/limits.conf && \
+    echo "cyberpot hard nofile 65536" >> /etc/security/limits.conf && \
+    echo "cyberpot soft nproc 4096" >> /etc/security/limits.conf && \
+    echo "cyberpot hard nproc 4096" >> /etc/security/limits.conf
+
+# Create AppArmor profile for enterprise API
+RUN echo "#include <tunables/global>" > /etc/apparmor.d/cyberpot-api && \
+    echo "profile cyberpot-api flags=(attach_disconnected,mediate_deleted) {" >> /etc/apparmor.d/cyberpot-api && \
+    echo "  #include <abstractions/base>" >> /etc/apparmor.d/cyberpot-api && \
+    echo "  #include <abstractions/python>" >> /etc/apparmor.d/cyberpot-api && \
+    echo "  /app/** rwk," >> /etc/apparmor.d/cyberpot-api && \
+    echo "  /tmp/** rwk," >> /etc/apparmor.d/cyberpot-api && \
+    echo "  network inet dgram," >> /etc/apparmor.d/cyberpot-api && \
+    echo "  network inet stream," >> /etc/apparmor.d/cyberpot-api && \
+    echo "  capability net_bind_service," >> /etc/apparmor.d/cyberpot-api && \
+    echo "}" >> /etc/apparmor.d/cyberpot-api
+
+# ================================================================================================
+# ENVIRONMENT VARIABLES
+# ================================================================================================
+
+ENV CYBERPOT_API_VERSION=24.04.1
+ENV LOG_LEVEL=INFO
+
+# API Configuration
+ENV API_HOST=0.0.0.0
+ENV API_PORT=8000
+ENV API_WORKERS=4
+
+# Database Configuration
+ENV DATABASE_URL=postgresql+asyncpg://cyberpot:changeme@postgres:5432/cyberpot_enterprise
+ENV REDIS_URL=redis://redis:6379/0
+
+# Elasticsearch Configuration
+ENV ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+
+# Authentication
+ENV JWT_SECRET_KEY=changeme-change-this-in-production
+ENV JWT_ALGORITHM=HS256
+ENV JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Security settings
+ENV ENABLE_TLS=false
+ENV TLS_CERT_PATH=""
+ENV TLS_KEY_PATH=""
+
+# External integrations
+ENV AWS_REGION=us-east-1
+ENV AZURE_TENANT_ID=""
+ENV GCP_PROJECT_ID=""
+
+# ================================================================================================
+# HEALTH CHECK
+# ================================================================================================
+
+# Add health check script
+COPY docker/templates/healthcheck-api.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh || exit 1
+
+# ================================================================================================
+# PORTS AND VOLUMES
+# ================================================================================================
+
+EXPOSE 8000
+
+VOLUME ["/app/data", "/app/logs", "/app/config", "/app/static"]
+
+# ================================================================================================
+# ENTRYPOINT
+# ================================================================================================
+
+# Switch to cyberpot user
+USER cyberpot
+
+# Create entrypoint script
+RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
+    echo 'set -e' >> /app/entrypoint.sh && \
+    echo 'echo "Starting CyberPot Enterprise Management API..."' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Run database migrations if needed' >> /app/entrypoint.sh && \
+    echo 'if [ -f /app/alembic.ini ]; then' >> /app/entrypoint.sh && \
+    echo '  echo "Running database migrations..."' >> /app/entrypoint.sh && \
+    echo '  alembic upgrade head' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Create initial admin user if needed' >> /app/entrypoint.sh && \
+    echo 'if [ ! -f /app/.initialized ]; then' >> /app/entrypoint.sh && \
+    echo '  echo "Initializing CyberPot Enterprise API..."' >> /app/entrypoint.sh && \
+    echo '  python -c "from app.core.init import create_initial_admin; create_initial_admin()"' >> /app/entrypoint.sh && \
+    echo '  touch /app/.initialized' >> /app/entrypoint.sh && \
+    echo 'fi' >> /app/entrypoint.sh && \
+    echo '' >> /app/entrypoint.sh && \
+    echo '# Start the API server' >> /app/entrypoint.sh && \
+    echo 'exec uvicorn app.main:app --host $API_HOST --port $API_PORT --workers $API_WORKERS' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# ================================================================================================
+# METADATA
+# ================================================================================================
+
+ARG BUILD_DATE
+ARG GIT_COMMIT
+
+LABEL build_date="${BUILD_DATE}"
+LABEL git_commit="${GIT_COMMIT}"

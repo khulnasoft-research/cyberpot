@@ -1,0 +1,95 @@
+# CyberPot Server Provisioning Playbook
+# Main playbook for automated CyberPot deployment
+
+- name: Provision CyberPot Server
+  hosts: cyberpot_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    cyberpot_version: "24.04.1"
+    cyberpot_environment: "{{ environment | default('dev') }}"
+    cyberpot_type: "{{ cyberpot_type | default('HIVE') }}"
+
+    # User configuration
+    cyberpot_user: "{{ cyberpot_user | default('cyberpot') }}"
+    cyberpot_group: "{{ cyberpot_group | default('cyberpot') }}"
+
+    # Directory configuration
+    cyberpot_base_dir: "{{ cyberpot_base_dir | default('/home/cyberpot') }}"
+    cyberpot_data_dir: "{{ cyberpot_data_dir | default('/home/cyberpot/cyberpot/data') }}"
+
+    # Security configuration
+    ssh_port: "{{ ssh_port | default(64295) }}"
+    web_port: "{{ web_port | default(64297) }}"
+
+    # Docker configuration
+    docker_compose_version: "2.24.0"
+
+  pre_tasks:
+    - name: Validate required variables
+      fail:
+        msg: "Variable '{{ item }}' is required"
+      when: item is not defined or item == ''
+      loop:
+        - cyberpot_version
+        - cyberpot_environment
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+  roles:
+    - system_hardening
+    - docker_installation
+    - cyberpot_installation
+    - cyberpot_configuration
+    - monitoring_setup
+    - security_configuration
+
+  post_tasks:
+    - name: Verify CyberPot installation
+      import_tasks: tasks/verify_installation.yml
+
+    - name: Display access information
+      debug:
+        msg: |
+          CyberPot installation completed!
+
+          Access Information:
+          - Web UI: https://{{ ansible_default_ipv4.address }}:{{ web_port }}
+          - SSH: ssh -l {{ cyberpot_user }} -p {{ ssh_port }} {{ ansible_default_ipv4.address }}
+          - Environment: {{ cyberpot_environment }}
+          - Version: {{ cyberpot_version }}
+
+          Check {{ cyberpot_base_dir }}/CYBERPOT_README.md for detailed information.
+          Credentials are stored in {{ cyberpot_base_dir }}/cyberpot/.env
+
+    - name: Create deployment summary
+      copy:
+        dest: "{{ cyberpot_base_dir }}/deployment-summary.json"
+        content: |
+          {
+            "deployment_date": "{{ ansible_date_time.iso8601 }}",
+            "environment": "{{ cyberpot_environment }}",
+            "cyberpot_version": "{{ cyberpot_version }}",
+            "server_ip": "{{ ansible_default_ipv4.address }}",
+            "ssh_port": "{{ ssh_port }}",
+            "web_port": "{{ web_port }}",
+            "data_directory": "{{ cyberpot_data_dir }}",
+            "backup_schedule": "Daily at 2:42 AM",
+            "log_rotation": "30 days"
+          }
+      notify: restart cyberpot
+
+  handlers:
+    - name: restart cyberpot
+      systemd:
+        name: cyberpot
+        state: restarted
+        daemon_reload: yes
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes

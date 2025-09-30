@@ -1,0 +1,84 @@
+{
+  "variables": {
+    "aws_region": "{{env `AWS_REGION`}}",
+    "cyberpot_version": "{{env `CYBERPOT_VERSION`}}",
+    "environment": "{{env `ENVIRONMENT`}}",
+    "instance_type": "{{env `INSTANCE_TYPE`}}",
+    "base_ami_id": "{{env `BASE_AMI_ID`}}",
+    "security_level": "{{env `SECURITY_LEVEL`}}",
+    "monitoring_enabled": "{{env `MONITORING_ENABLED`}}",
+    "threat_intelligence": "{{env `THREAT_INTELLIGENCE`}}",
+    "vulnerability_scanning": "{{env `VULNERABILITY_SCANNING`}}",
+    "dark_web_monitoring": "{{env `DARK_WEB_MONITORING`}}",
+    "ssh_username": "ubuntu",
+    "ami_name": "cyberpot-enterprise-{{isotime \"20060102-150405\"}}",
+    "ami_description": "CyberPot Enterprise Image - {{isotime \"2006-01-02\"}}"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "{{user `aws_region`}}",
+      "source_ami": "{{user `base_ami_id`}}",
+      "instance_type": "{{user `instance_type`}}",
+      "ssh_username": "{{user `ssh_username`}}",
+      "ssh_timeout": "15m",
+      "ami_name": "{{user `ami_name`}}",
+      "ami_description": "{{user `ami_description`}}",
+      "ami_virtualization_type": "hvm",
+      "ami_block_device_mappings": [
+        {
+          "device_name": "/dev/sda1",
+          "volume_type": "gp3",
+          "volume_size": 30,
+          "delete_on_termination": true,
+          "encrypted": true
+        }
+      ],
+      "tags": {
+        "Name": "CyberPot Enterprise Image",
+        "Version": "{{user `cyberpot_version`}}",
+        "Environment": "{{user `environment`}}",
+        "Security-Level": "{{user `security_level`}}",
+        "Features": "threat-intelligence,vulnerability-scanning,monitoring",
+        "Created": "{{isotime \"2006-01-02T15:04:05Z\"}}",
+        "OS": "Ubuntu 22.04 LTS",
+        "Purpose": "CyberPot Enterprise Platform"
+      },
+      "run_tags": {
+        "Name": "Packer Builder - CyberPot Enterprise"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "scripts": [
+        "{{template_dir}}/scripts/01-install-base-dependencies.sh",
+        "{{template_dir}}/scripts/02-install-cyberpot.sh",
+        "{{template_dir}}/scripts/03-setup-monitoring.sh",
+        "{{template_dir}}/scripts/04-install-threat-intelligence.sh",
+        "{{template_dir}}/scripts/05-install-vulnerability-scanner.sh",
+        "{{template_dir}}/scripts/06-install-forensics-tools.sh",
+        "{{template_dir}}/scripts/07-setup-siem-integration.sh",
+        "{{template_dir}}/scripts/08-advanced-security-hardening.sh",
+        "{{template_dir}}/scripts/09-configure-enterprise-features.sh"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt-get autoremove -y",
+        "sudo apt-get autoclean",
+        "sudo rm -rf /tmp/* /var/tmp/* /var/log/installer/",
+        "sudo journalctl --vacuum-time=1d"
+      ]
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "manifest",
+      "output": "{{template_dir}}/manifest.json",
+      "strip_path": true
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "variables": {
+    "aws_region": "{{env `AWS_REGION`}}",
+    "cyberpot_version": "{{env `CYBERPOT_VERSION`}}",
+    "environment": "{{env `ENVIRONMENT`}}",
+    "instance_type": "{{env `INSTANCE_TYPE`}}",
+    "base_ami_id": "{{env `BASE_AMI_ID`}}",
+    "security_level": "{{env `SECURITY_LEVEL`}}",
+    "monitoring_enabled": "{{env `MONITORING_ENABLED`}}",
+    "threat_intelligence": "{{env `THREAT_INTELLIGENCE`}}",
+    "ssh_username": "ubuntu",
+    "ami_name": "cyberpot-base-{{isotime \"20060102-150405\"}}",
+    "ami_description": "CyberPot Base Image - {{isotime \"2006-01-02\"}}"
+  },
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "{{user `aws_region`}}",
+      "source_ami": "{{user `base_ami_id`}}",
+      "instance_type": "{{user `instance_type`}}",
+      "ssh_username": "{{user `ssh_username`}}",
+      "ssh_timeout": "10m",
+      "ami_name": "{{user `ami_name`}}",
+      "ami_description": "{{user `ami_description`}}",
+      "ami_virtualization_type": "hvm",
+      "ami_block_device_mappings": [
+        {
+          "device_name": "/dev/sda1",
+          "volume_type": "gp3",
+          "volume_size": 20,
+          "delete_on_termination": true,
+          "encrypted": true
+        }
+      ],
+      "tags": {
+        "Name": "CyberPot Base Image",
+        "Version": "{{user `cyberpot_version`}}",
+        "Environment": "{{user `environment`}}",
+        "Security-Level": "{{user `security_level`}}",
+        "Created": "{{isotime \"2006-01-02T15:04:05Z\"}}",
+        "OS": "Ubuntu 22.04 LTS",
+        "Purpose": "CyberPot Honeypot Platform"
+      },
+      "run_tags": {
+        "Name": "Packer Builder - CyberPot"
+      },
+      "run_volume_tags": {
+        "Name": "Packer Builder Volume"
+      }
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt-get update",
+        "sudo apt-get upgrade -y",
+        "sudo apt-get install -y software-properties-common apt-transport-https ca-certificates curl gnupg lsb-release"
+      ]
+    },
+    {
+      "type": "shell",
+      "scripts": [
+        "{{template_dir}}/scripts/01-install-docker.sh",
+        "{{template_dir}}/scripts/02-install-cyberpot.sh",
+        "{{template_dir}}/scripts/03-configure-monitoring.sh",
+        "{{template_dir}}/scripts/04-security-hardening.sh",
+        "{{template_dir}}/scripts/05-setup-services.sh"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt-get autoremove -y",
+        "sudo apt-get autoclean",
+        "sudo rm -rf /tmp/* /var/tmp/*"
+      ]
+    }
+  ],
+  "post-processors": [
+    {
+      "type": "manifest",
+      "output": "{{template_dir}}/manifest.json",
+      "strip_path": true
+    }
+  ]
+}
