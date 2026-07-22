@@ -101,9 +101,9 @@ env bash -c "$(curl -sL https://github.com/khulnasoft/cyberpot/raw/master/instal
 
 # Technical Concept
 
-CyberPot's main components have been moved into the `cyberpotinit` Docker image allowing CyberPot to now support multiple Linux distributions, even macOS and Windows (although both limited to the feature set of Docker Desktop). CyberPot uses [docker](https://www.docker.com/) and [docker compose](https://docs.docker.com/compose/) to reach its goal of running as many honeypots and tools as possible simultaneously and thus utilizing the host's hardware to its maximum.
+CyberPot's main components have been moved into the `cyberpot-init` Docker image allowing CyberPot to now support multiple Linux distributions, even macOS and Windows (although both limited to the feature set of Docker Desktop). CyberPot uses [docker](https://www.docker.com/) and [docker compose](https://docs.docker.com/compose/) to reach its goal of running as many honeypots and tools as possible simultaneously and thus utilizing the host's hardware to its maximum.
 
-The container image for the initialization layer is published to GitHub Container Registry as `ghcr.io/khulnasoft/cyberpotinit`. You can pull it directly with `docker pull ghcr.io/khulnasoft/cyberpotinit:latest`.
+The container image for the initialization layer is published to GitHub Container Registry as `ghcr.io/khulnasoft/cyberpot-init`. You can pull it directly with `docker pull ghcr.io/khulnasoft/cyberpot-init:latest`.
 <br><br>
 
 CyberPot offers docker images for the following honeypots ...
@@ -507,7 +507,7 @@ You may opt out of the submission by removing the `# Ewsposter service` from `~/
     container_name: ewsposter
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - ewsposter_local
@@ -779,7 +779,7 @@ Some CyberPot updates will require you to update the Kibana objects. Either to s
 
 ### Import
 
-1. [Download the NDJSON file](https://github.com/khulnasoft/cyberpot/blob/master/docker/cyberpotinit/dist/etc/objects/kibana_export.ndjson.zip) and unzip it.
+1. [Download the NDJSON file](https://github.com/khulnasoft/cyberpot/blob/master/docker/cyberpot-init/dist/etc/objects/kibana_export.ndjson.zip) and unzip it.
 2. Go to Kibana
 3. Click on "Stack Management"
 4. Click on "Saved Objects"
@@ -809,7 +809,7 @@ docker-compose -f ~/cyberpot/docker-compose.yml down -v
 ```
 
 - Check individual container logs: `docker logs -f <container_name>`
-- Check `cyberpotinit` log: `cat ~/cyberpot/data/cyberpotinit.log`
+- Check `cyberpot-init` log: `cat ~/cyberpot/data/cyberpot-init.log`
   <br><br>
 
 ## RAM and Storage

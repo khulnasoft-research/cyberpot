@@ -1,4 +1,4 @@
-# Run genuser.sh within cyberpotinit, prepare path and file
+# Run genuser.sh within cyberpot-init, prepare path and file
 # Define the volume paths
 $homePath = $Env:USERPROFILE + "\cyberpot"
 $nginxpasswdPath = $homePath + "\data\nginx\conf\nginxpasswd"
@@ -9,4 +9,4 @@ if (-Not (Test-Path $nginxpasswdPath)) {
 }
 
 # Run the Docker container without specifying UID / GID
-docker run -v "${homePath}:/data" --entrypoint bash -it khulnasoft/cyberpotinit:24.04.1 "/opt/cyberpot/bin/genuser.sh"
+docker run -v "${homePath}:/data" --entrypoint bash -it khulnasoft/cyberpot-init:24.04.1 "/opt/cyberpot/bin/genuser.sh"

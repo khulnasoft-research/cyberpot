@@ -36,8 +36,8 @@ services:
 #########################################
 
 # CyberPot Init Service
-  cyberpotinit:
-    container_name: cyberpotinit
+  cyberpot-init:
+    container_name: cyberpot-init
     env_file:
       - .env
     restart: always
@@ -48,7 +48,7 @@ services:
     network_mode: "host"
     cap_add:
      - NET_ADMIN
-    image: ${CYBERPOT_REPO}/cyberpotinit:${CYBERPOT_VERSION}
+    image: ${CYBERPOT_REPO}/cyberpot-init:${CYBERPOT_VERSION}
     pull_policy: ${CYBERPOT_PULL_POLICY}
     volumes:
       - ${CYBERPOT_DOCKER_COMPOSE}:/tmp/cyberpot/docker-compose.yml:ro
@@ -453,7 +453,7 @@ services:
     container_name: rdphoneypot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - rdphoneypot_local
@@ -614,7 +614,7 @@ services:
     container_name: elasticsearch
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     environment:
      - bootstrap.memory_lock=true

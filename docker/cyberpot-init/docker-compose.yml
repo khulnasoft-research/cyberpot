@@ -1,14 +1,14 @@
 services:
 
 # CyberPot Init Service
-  cyberpotinit:
+  cyberpot-init:
     build: .
-    container_name: cyberpotinit
+    container_name: cyberpot-init
     env_file:
       - $HOME/cyberpot/.env
     restart: "no"
     stop_grace_period: 60s
-    image: "ghcr.io/khulnasoft/cyberpotinit:24.04.1"
+    image: "ghcr.io/khulnasoft/cyberpot-init:24.04.1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - $HOME/cyberpot/data:/data

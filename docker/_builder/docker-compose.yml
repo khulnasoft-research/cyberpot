@@ -346,12 +346,12 @@ services:
 ##################
 
 # CyberPot Init
-  cyberpotinit:
-    image: ${CYBERPOT_DOCKER_REPO}/cyberpotinit:${CYBERPOT_VERSION}
+  cyberpot-init:
+    image: ${CYBERPOT_DOCKER_REPO}/cyberpot-init:${CYBERPOT_VERSION}
     build:
       tags:
-        - ${CYBERPOT_GHCR_REPO}/cyberpotinit:${CYBERPOT_VERSION}
-      context: ../cyberpotinit/
+        - ${CYBERPOT_GHCR_REPO}/cyberpot-init:${CYBERPOT_VERSION}
+      context: ../cyberpot-init/
       <<: *common-build
 
 #### ELK

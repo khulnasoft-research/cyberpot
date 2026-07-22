@@ -3,7 +3,7 @@ name: Build and publish Docker image
 on:
   pull_request:
     paths:
-      - 'docker/cyberpotinit/**'
+      - 'docker/cyberpot-init/**'
       - '.github/workflows/docker-publish.yml'
   push:
     branches:
@@ -14,7 +14,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/cyberpotinit
+  IMAGE_NAME: ${{ github.repository_owner }}/cyberpot-init
 
 jobs:
   build-test:
@@ -30,16 +30,16 @@ jobs:
       - name: Build image for smoke test
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/cyberpotinit
-          file: ./docker/cyberpotinit/Dockerfile
+          context: ./docker/cyberpot-init
+          file: ./docker/cyberpot-init/Dockerfile
           load: true
-          tags: local/cyberpotinit:test
+          tags: local/cyberpot-init:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Smoke test image
         run: |
-          docker run --rm --entrypoint /bin/sh local/cyberpotinit:test -c 'test -f /opt/cyberpot/entrypoint.sh && test -d /opt/cyberpot'
+          docker run --rm --entrypoint /bin/sh local/cyberpot-init:test -c 'test -f /opt/cyberpot/entrypoint.sh && test -d /opt/cyberpot'
 
   publish:
     if: github.event_name != 'pull_request'
@@ -76,8 +76,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/cyberpotinit
-          file: ./docker/cyberpotinit/Dockerfile
+          context: ./docker/cyberpot-init
+          file: ./docker/cyberpot-init/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

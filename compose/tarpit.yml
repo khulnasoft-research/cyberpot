@@ -17,8 +17,8 @@ services:
 #########################################
 
 # CyberPot Init Service
-  cyberpotinit:
-    container_name: cyberpotinit
+  cyberpot-init:
+    container_name: cyberpot-init
     env_file:
       - .env
     restart: always
@@ -29,7 +29,7 @@ services:
     network_mode: "host"
     cap_add:
      - NET_ADMIN
-    image: ${CYBERPOT_REPO}/cyberpotinit:${CYBERPOT_VERSION}
+    image: ${CYBERPOT_REPO}/cyberpot-init:${CYBERPOT_VERSION}
     pull_policy: ${CYBERPOT_PULL_POLICY}
     volumes:
       - ${CYBERPOT_DOCKER_COMPOSE}:/tmp/cyberpot/docker-compose.yml:ro
@@ -47,7 +47,7 @@ services:
     container_name: ddospot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - ddospot_local
@@ -70,7 +70,7 @@ services:
     container_name: endlessh
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - endlessh_local
@@ -87,7 +87,7 @@ services:
     container_name: go-pot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - go-pot_local
@@ -104,7 +104,7 @@ services:
     container_name: hellpot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - hellpot_local
@@ -121,7 +121,7 @@ services:
     container_name: heralding
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tmpfs:
      - /tmp/heralding:uid=2000,gid=2000
@@ -161,7 +161,7 @@ services:
     container_name: fatt
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     network_mode: "host"
     cap_add:
@@ -178,7 +178,7 @@ services:
     container_name: p0f
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     network_mode: "host"
     image: ${CYBERPOT_REPO}/p0f:${CYBERPOT_VERSION}
@@ -192,7 +192,7 @@ services:
     container_name: suricata
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     environment:
      - OINKCODE=${OINKCODE:-OPEN} # Default to OPEN if unset or NULL (value provided by CyberPot .env)
@@ -219,7 +219,7 @@ services:
     container_name: elasticsearch
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - nginx_local
@@ -287,7 +287,7 @@ services:
     container_name: map_redis
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - nginx_local
@@ -302,7 +302,7 @@ services:
     container_name: map_web
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - nginx_local
@@ -339,7 +339,7 @@ services:
     container_name: ewsposter
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - ewsposter_local
@@ -365,7 +365,7 @@ services:
     environment:
       - CYBERPOT_OSTYPE=${CYBERPOT_OSTYPE}
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tmpfs:
      - /var/tmp/nginx/client_body
@@ -394,7 +394,7 @@ services:
     container_name: spiderfoot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - nginx_local

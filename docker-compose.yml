@@ -34,8 +34,8 @@ services:
 #########################################
 
 # CyberPot Init Service
-  cyberpotinit:
-    container_name: cyberpotinit
+  cyberpot-init:
+    container_name: cyberpot-init
     env_file:
       - .env
     restart: always
@@ -46,7 +46,7 @@ services:
     network_mode: "host"
     cap_add:
      - NET_ADMIN
-    image: ${CYBERPOT_REPO}/cyberpotinit:${CYBERPOT_VERSION}
+    image: ${CYBERPOT_REPO}/cyberpot-init:${CYBERPOT_VERSION}
     pull_policy: ${CYBERPOT_PULL_POLICY}
     volumes:
       - ${CYBERPOT_DOCKER_COMPOSE}:/tmp/cyberpot/docker-compose.yml:ro
@@ -64,7 +64,7 @@ services:
     container_name: adbhoney
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - adbhoney_local
@@ -82,7 +82,7 @@ services:
     container_name: ciscoasa
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tmpfs:
      - /tmp/ciscoasa:uid=2000,gid=2000
@@ -102,7 +102,7 @@ services:
     container_name: conpot_iec104
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     environment:
      - CONPOT_CONFIG=/etc/conpot/conpot.cfg
@@ -128,7 +128,7 @@ services:
     container_name: conpot_guardian_ast
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     environment:
      - CONPOT_CONFIG=/etc/conpot/conpot.cfg
@@ -153,7 +153,7 @@ services:
     container_name: conpot_ipmi
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     environment:
      - CONPOT_CONFIG=/etc/conpot/conpot.cfg
@@ -178,7 +178,7 @@ services:
     container_name: conpot_kamstrup_382
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     environment:
      - CONPOT_CONFIG=/etc/conpot/conpot.cfg
@@ -204,7 +204,7 @@ services:
     container_name: cowrie
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tmpfs:
       - /tmp/cowrie:uid=2000,gid=2000
@@ -231,7 +231,7 @@ services:
     container_name: dicompot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - dicompot_local
@@ -252,7 +252,7 @@ services:
     tty: true
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - dionaea_local
@@ -291,7 +291,7 @@ services:
     container_name: elasticpot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - elasticpot_local
@@ -308,7 +308,7 @@ services:
     container_name: h0neytr4p
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - h0neytr4p_local
@@ -327,7 +327,7 @@ services:
     container_name: heralding
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tmpfs:
      - /tmp/heralding:uid=2000,gid=2000
@@ -361,7 +361,7 @@ services:
     container_name: honeyaml
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - honeyaml_local
@@ -378,7 +378,7 @@ services:
     container_name: honeytrap
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tmpfs:
      - /tmp/honeytrap:uid=2000,gid=2000
@@ -398,7 +398,7 @@ services:
     container_name: ipphoney
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - ipphoney_local
@@ -417,7 +417,7 @@ services:
     tty: true
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - mailoney_local
@@ -435,7 +435,7 @@ services:
     container_name: medpot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - medpot_local
@@ -452,7 +452,7 @@ services:
     container_name: miniprint
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - miniprint_local
@@ -470,7 +470,7 @@ services:
     container_name: rdphoneypot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - rdphoneypot_local
@@ -488,7 +488,7 @@ services:
     container_name: redishoneypot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - redishoneypot_local
@@ -505,7 +505,7 @@ services:
     container_name: sentrypeer
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
 #    environment:
 #     - SENTRYPEER_PEER_TO_PEER=1
@@ -528,7 +528,7 @@ services:
     container_name: tanner_redis
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tty: true
     networks:
@@ -542,7 +542,7 @@ services:
     container_name: tanner_phpox
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tty: true
     networks:
@@ -608,7 +608,7 @@ services:
     container_name: wordpot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - wordpot_local
@@ -630,7 +630,7 @@ services:
     container_name: fatt
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     network_mode: "host"
     cap_add:
@@ -647,7 +647,7 @@ services:
     container_name: p0f
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     network_mode: "host"
     image: ${CYBERPOT_REPO}/p0f:${CYBERPOT_VERSION}
@@ -661,7 +661,7 @@ services:
     container_name: suricata
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     environment:
      - OINKCODE=${OINKCODE:-OPEN} # Default to OPEN if unset or NULL (value provided by CyberPot .env)
@@ -688,7 +688,7 @@ services:
     container_name: elasticsearch
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - nginx_local
@@ -756,7 +756,7 @@ services:
     container_name: map_redis
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - nginx_local
@@ -771,7 +771,7 @@ services:
     container_name: map_web
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - nginx_local
@@ -808,7 +808,7 @@ services:
     container_name: ewsposter
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - ewsposter_local
@@ -834,7 +834,7 @@ services:
     environment:
       - CYBERPOT_OSTYPE=${CYBERPOT_OSTYPE}
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     tmpfs:
      - /var/tmp/nginx/client_body
@@ -863,7 +863,7 @@ services:
     container_name: spiderfoot
     restart: always
     depends_on:
-      cyberpotinit:
+      cyberpot-init:
         condition: service_healthy
     networks:
      - nginx_local

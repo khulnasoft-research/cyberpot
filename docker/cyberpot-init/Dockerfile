@@ -41,7 +41,7 @@ RUN apk --no-cache -U upgrade && \
            /opt/cyberpot/.git \
            /var/cache/apk/*
 #
-# Run cyberpotinit
+# Run cyberpot-init
 WORKDIR /opt/cyberpot
 #HEALTHCHECK --interval=5s --timeout=30s --retries=3 CMD pgrep -f autoheal || exit 1
 HEALTHCHECK --retries=1000 --interval=5s CMD test -f /tmp/success || exit 1

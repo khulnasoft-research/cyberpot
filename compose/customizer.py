@@ -142,8 +142,8 @@ def main():
     # Separate services and networks
     services = config['services']
     networks = config.get('networks', {})
-    selected_services = {'cyberpotinit': services['cyberpotinit'],
-                         'logstash': services['logstash']}  # Always include cyberpotinit and logstash
+    selected_services = {'cyberpot-init': services['cyberpot-init'],
+                         'logstash': services['logstash']}  # Always include cyberpot-init and logstash
 
     for service_name, service_config in services.items():
         if service_name not in selected_services:  # Skip already included services

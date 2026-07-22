@@ -83,10 +83,10 @@ echo -e "  ${BLUE}Build and push release with Docker Compose:${NC}"
 echo "    docker compose build --push"
 echo
 echo -e "  ${BLUE}Build a single image with Docker Compose:${NC}"
-echo "    docker compose build cyberpotinit"
+echo "    docker compose build cyberpot-init"
 echo
 echo -e "  ${BLUE}Build and push a single image with Docker Compose:${NC}"
-echo "    docker compose build cyberpotinit --push"
+echo "    docker compose build cyberpot-init --push"
 echo
 echo -e "${BLUE}Resolve buildx issues:${NC}"
 echo "    docker buildx create --use --name mybuilder"
