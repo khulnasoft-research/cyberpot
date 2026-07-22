@@ -73,7 +73,6 @@ start_devcontainer() {
             --name cyberpot-dev \
             -v "$REPO_ROOT:/workspace" \
             -w /workspace \
-            -p 8080:8080 \
             cyberpot-dev \
             sleep infinity
         log_info "Devcontainer started. Use 'docker exec -it cyberpot-dev bash' to connect."
