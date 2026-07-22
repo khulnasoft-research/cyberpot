@@ -4,7 +4,7 @@ PYTHON ?= python3
 GREEN := \033[0;32m
 NC := \033[0m
 
-.PHONY: help setup validate test preset health install update uninstall build-images analyze-structure
+.PHONY: help setup validate test preset health install update uninstall build-images analyze-structure devcontainer devcontainer-up devcontainer-down devcontainer-shell devcontainer-status
 
 help: ## Show this help message
 	@echo ''
@@ -27,8 +27,15 @@ help: ## Show this help message
 	@echo "$(GREEN)Docker Commands:$(NC)"
 	@echo "  $(GREEN)make preset$(NC)        - Select a compose preset"
 	@echo "    Usage: make preset PRESET=standard OUTPUT=./docker-compose.yml"
-	@echo "  $(GREEN)make build-images$(NC)  - Build Docker images"
-	@echo "    Usage: make build-images TARGET=cyberpot OUTPUT_DIR=./build/images"
+	@echo "  $(GREEN)make build-images$(NC)  - Build images (iso, virtualbox, vmware)"
+	@echo "    Usage: make build-images TARGET=iso OUTPUT_DIR=./build/images"
+	@echo ''
+	@echo "$(GREEN)Devcontainer Commands:$(NC)"
+	@echo "  $(GREEN)make devcontainer$(NC)        - Build and start devcontainer"
+	@echo "  $(GREEN)make devcontainer-up$(NC)     - Build, start, and setup devcontainer"
+	@echo "  $(GREEN)make devcontainer-down$(NC)   - Stop and remove devcontainer"
+	@echo "  $(GREEN)make devcontainer-shell$(NC)  - Open shell in devcontainer"
+	@echo "  $(GREEN)make devcontainer-status$(NC) - Show devcontainer status"
 	@echo ''
 	@echo "$(GREEN)═══════════════════════════════════════════════════════════════════$(NC)"
 	@echo ''
@@ -65,8 +72,25 @@ uninstall: ## Run the uninstall workflow
 	@echo "Running CyberPot uninstall workflow..."
 	@bash ./uninstall.sh
 
-build-images: ## Build Docker images (requires TARGET)
+build-images: ## Build images (requires TARGET: iso, virtualbox, vmware)
+	@if [ -z "$(TARGET)" ]; then echo "Usage: make build-images TARGET=iso OUTPUT_DIR=./build/images"; exit 2; fi
+	@if [ "$(TARGET)" != "iso" ] && [ "$(TARGET)" != "virtualbox" ] && [ "$(TARGET)" != "vmware" ]; then echo "Invalid TARGET: $(TARGET). Must be: iso, virtualbox, vmware"; exit 2; fi
 	$(PYTHON) scripts/build_images.py --target $(TARGET) --output-dir $(if $(OUTPUT_DIR),$(OUTPUT_DIR),./build/images) --dry-run
+
+devcontainer: ## Build and start devcontainer
+	bash scripts/setup_devcontainer.sh up
+
+devcontainer-up: ## Build, start, and setup devcontainer
+	bash scripts/setup_devcontainer.sh up
+
+devcontainer-down: ## Stop and remove devcontainer
+	bash scripts/setup_devcontainer.sh remove
+
+devcontainer-shell: ## Open shell in devcontainer
+	bash scripts/setup_devcontainer.sh shell
+
+devcontainer-status: ## Show devcontainer status
+	bash scripts/setup_devcontainer.sh status
 
 default: help
 
