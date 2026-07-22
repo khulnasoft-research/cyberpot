@@ -1,6 +1,0 @@
-{
-  "target": "iso",
-  "description": "Generate ISO image build scaffold",
-  "repo": "khulnasoft/cyberpot",
-  "generated_by": "scripts/build_images.py"
-}

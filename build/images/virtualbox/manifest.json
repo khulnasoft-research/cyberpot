@@ -1,6 +1,0 @@
-{
-  "target": "virtualbox",
-  "description": "Generate VirtualBox image build scaffold",
-  "repo": "khulnasoft/cyberpot",
-  "generated_by": "scripts/build_images.py"
-}

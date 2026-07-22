@@ -4,3 +4,12 @@ _data/
 **/.DS_Store
 .idea
 install_cyberpot.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Build artifacts
+dist/
+build/

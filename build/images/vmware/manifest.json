@@ -1,6 +1,0 @@
-{
-  "target": "vmware",
-  "description": "Generate VMware image build scaffold",
-  "repo": "khulnasoft/cyberpot",
-  "generated_by": "scripts/build_images.py"
-}
