@@ -314,6 +314,7 @@ services:
      - h0neytr4p_local
     ports:
      - "443:443"
+     - "2087:443"
     # - "80:80"
     image: ${CYBERPOT_REPO}/h0neytr4p:${CYBERPOT_VERSION}
     pull_policy: ${CYBERPOT_PULL_POLICY}

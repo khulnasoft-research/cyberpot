@@ -11,7 +11,7 @@ authors:
   - name: KhulnaSoft Security Research Team
     address: Khulna, Bangladesh
     city: khulna
-    state: Khulna
+    region: Khulna
     country: Bangladesh
     post-code: '9000'
     website: 'https://github.com/khulnasoft'

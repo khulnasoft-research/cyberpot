@@ -8,7 +8,7 @@ myGREEN="[0;32m"
 myWHITE="[0;0m"
 myBLUE="[0;34m"
 
-myINSTALLER=$(cat << "EOF"
+myUPDATER=$(cat << "EOF"
    ______      __              ____        __ 
   / ____/_  __/ /_  ___  _____/ __ \____  / /_
  / /   / / / / __ \/ _ \/ ___/ /_/ / __ \/ __/

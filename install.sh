@@ -195,6 +195,10 @@ select_compose_preset() {
   fi
 
   python3 "${helper_script}" --preset "${preset}" --output "${output_file}"
+  if [ $? -ne 0 ]; then
+    echo "### Failed to generate docker-compose.yml for preset '${preset}'" >&2
+    exit 1
+  fi
 }
 
 while true; do

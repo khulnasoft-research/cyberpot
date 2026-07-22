@@ -17,7 +17,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_command(command: list[str], env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(command, capture_output=True, text=True, check=False, env=env)  # nosec B603 - command list is not shell-interpreted
+    try:
+        return subprocess.run(command, capture_output=True, text=True, check=False, env=env)  # nosec B603 - command list is not shell-interpreted
+    except OSError as exc:
+        return subprocess.CompletedProcess(command, returncode=1, stdout="", stderr=str(exc))
 
 
 def main() -> int:

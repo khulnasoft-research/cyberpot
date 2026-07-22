@@ -466,8 +466,9 @@
         name: ssh.socket
         state: stopped
         enabled: false
+      register: ssh_socket_result
       when: ansible_distribution in ["Ubuntu"]
-      ignore_errors: true
+      failed_when: ssh_socket_result is failed and 'Could not find the requested unit' not in ssh_socket_result.msg | default('')
       tags:
         - "Ubuntu"
 
@@ -569,8 +570,9 @@
       service:
         name: systemd-resolved
         state: stopped
+      register: resolved_stop_result
       when: ansible_distribution in ["Fedora", "Ubuntu"]
-      ignore_errors: true
+      failed_when: resolved_stop_result is failed and 'not found' not in resolved_stop_result.msg | default('')
       tags:
         - "Fedora"
         - "Ubuntu"
@@ -579,8 +581,9 @@
       copy:
         src: /usr/lib/systemd/resolved.conf
         dest: /etc/systemd/resolved.conf
+      register: resolved_copy_result
       when: ansible_distribution in ["Fedora"]
-      ignore_errors: true
+      failed_when: resolved_copy_result is failed and 'src' not in resolved_copy_result.msg | default('')
       tags:
         - "Fedora"
 
@@ -590,8 +593,9 @@
         regexp: '^.*DNSStubListener=.*'
         line: 'DNSStubListener=no'
         state: present
+      register: dns_result
       when: ansible_distribution in ["Fedora", "Ubuntu"]
-      ignore_errors: true
+      failed_when: dns_result is failed and 'does not exist' not in dns_result.msg | default('')
       tags:
         - "Fedora"
         - "Ubuntu"
@@ -610,8 +614,9 @@
       service:
         name: systemd-resolved
         state: restarted
+      register: resolved_start_result
       when: ansible_distribution in ["Fedora", "Ubuntu"]
-      ignore_errors: true
+      failed_when: resolved_start_result is failed and 'not found' not in resolved_start_result.msg | default('')
       tags:
         - "Fedora"
         - "Ubuntu"
@@ -667,8 +672,9 @@
         name: "{{ 'ssh' if ansible_distribution in ['Ubuntu'] else 'sshd' }}"
         state: restarted
         enabled: true
+      register: ssh_restart_result
       when: ansible_distribution in ["AlmaLinux", "Debian", "Fedora", "openSUSE Tumbleweed", "Raspbian", "Rocky", "Ubuntu"]
-      ignore_errors: true
+      failed_when: ssh_restart_result is failed and 'not found' not in ssh_restart_result.msg | default('')
       tags:
         - "AlmaLinux"
         - "Debian"
@@ -779,8 +785,9 @@
         daemon_reload: yes
         state: stopped
         enabled: yes
+      register: cyberpot_service_result
       when: ansible_distribution in ["AlmaLinux", "Debian", "Fedora", "openSUSE Tumbleweed", "Raspbian", "Rocky", "Ubuntu"]
-      ignore_errors: true
+      failed_when: cyberpot_service_result is failed and 'not found' not in cyberpot_service_result.msg | default('')
 
 - name: CyberPot - Setup a randomized daily reboot
   hosts: all

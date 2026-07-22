@@ -453,7 +453,7 @@ services:
     container_name: rdphoneypot
     restart: always
     depends_on:
-      cyberpot-init:
+      logstash:
         condition: service_healthy
     networks:
      - rdphoneypot_local

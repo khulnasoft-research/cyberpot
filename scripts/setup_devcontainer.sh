@@ -69,13 +69,18 @@ start_devcontainer() {
         devcontainer up --workspace-folder "$REPO_ROOT"
         log_info "Devcontainer started. Use 'devcontainer exec' to run commands."
     else
-        docker run -d \
-            --name cyberpot-dev \
-            -v "$REPO_ROOT:/workspace" \
-            -w /workspace \
-            cyberpot-dev \
-            sleep infinity
-        log_info "Devcontainer started. Use 'docker exec -it cyberpot-dev bash' to connect."
+        if docker ps -a --format '{{.Names}}' | grep -q "^cyberpot-dev$"; then
+            docker start cyberpot-dev >/dev/null
+            log_info "Existing devcontainer restarted. Use 'docker exec -it cyberpot-dev bash' to connect."
+        else
+            docker run -d \
+                --name cyberpot-dev \
+                -v "$REPO_ROOT:/workspace" \
+                -w /workspace \
+                cyberpot-dev \
+                sleep infinity
+            log_info "Devcontainer started. Use 'docker exec -it cyberpot-dev bash' to connect."
+        fi
     fi
 }
 

@@ -107,7 +107,7 @@ validate_env() {
     # Run validate_repo.py if available
     if [ -f scripts/validate_repo.py ]; then
         log_info "Running repository validation..."
-        "$PYTHON" scripts/validate_repo.py || log_warn "Repository validation completed with warnings"
+        "$VENV_DIR/bin/python" scripts/validate_repo.py || log_warn "Repository validation completed with warnings"
     fi
 
     log_info "Environment validation complete"
