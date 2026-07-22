@@ -9,6 +9,8 @@ install_cyberpot.log
 __pycache__/
 *.pyc
 *.pyo
+.venv/
+venv/
 
 # Build artifacts
 dist/
