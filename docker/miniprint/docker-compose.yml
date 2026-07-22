@@ -25,9 +25,6 @@ services:
   rdphoneypot:
     container_name: rdphoneypot
     restart: always
-    depends_on:
-      cyberpotinit:
-        condition: service_healthy
     networks:
      - rdphoneypot_local
     ports:

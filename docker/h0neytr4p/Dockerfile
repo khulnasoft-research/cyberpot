@@ -20,7 +20,7 @@ RUN chmod 444 /out/app.key /out/app.crt
 FROM scratch
 #
 COPY --from=builder /out/h0neytr4p /opt/h0neytr4p/h0neytr4p
-COPY --from=builder /out/traps /opt/h0neytr4p/traps
+COPY --from=builder /app/traps /opt/h0neytr4p/traps
 COPY --from=builder /out/app.key /opt/h0neytr4p/
 COPY --from=builder /out/app.crt /opt/h0neytr4p/
 #

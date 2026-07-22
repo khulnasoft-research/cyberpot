@@ -58,6 +58,11 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (FileNotFoundError, RuntimeError, yaml.YAMLError) as exc:
+    except (FileNotFoundError, RuntimeError) as exc:
         print(str(exc), file=sys.stderr)
         sys.exit(1)
+    except Exception as exc:
+        if yaml is not None and isinstance(exc, yaml.YAMLError):
+            print(str(exc), file=sys.stderr)
+            sys.exit(1)
+        raise
