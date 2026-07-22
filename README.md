@@ -102,6 +102,8 @@ env bash -c "$(curl -sL https://github.com/khulnasoft/cyberpot/raw/master/instal
 # Technical Concept
 
 CyberPot's main components have been moved into the `cyberpotinit` Docker image allowing CyberPot to now support multiple Linux distributions, even macOS and Windows (although both limited to the feature set of Docker Desktop). CyberPot uses [docker](https://www.docker.com/) and [docker compose](https://docs.docker.com/compose/) to reach its goal of running as many honeypots and tools as possible simultaneously and thus utilizing the host's hardware to its maximum.
+
+The container image for the initialization layer is published to GitHub Container Registry as `ghcr.io/khulnasoft/cyberpotinit`. You can pull it directly with `docker pull ghcr.io/khulnasoft/cyberpotinit:latest`.
 <br><br>
 
 CyberPot offers docker images for the following honeypots ...
