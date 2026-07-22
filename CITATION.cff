@@ -8,15 +8,16 @@ message: >-
   metadata from this file.
 type: software
 authors:
-  - name: KhulnaSoft DevSecOps
-    address: Bonner Talweg 100
-    city: Bonn
-    country: DE
-    post-code: '53113'
+  - name: KhulnaSoft Security Research Team
+    address: Khulna, Bangladesh
+    city: khulna
+    state: Khulna
+    country: Bangladesh
+    post-code: '9000'
     website: 'https://github.com/khulnasoft'
-  - given-names: Marco
-    family-names: Ochse
-    affiliation: KhulnaSoft DevSecOps
+  - given-names: Md
+    family-names: Sulaman
+    affiliation: KhulnaSoft, Ltd
 identifiers:
   - type: url
     value: >-
