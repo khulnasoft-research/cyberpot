@@ -183,6 +183,20 @@ echo "### (T)arpit - CyberPot Tarpit installation."
 echo "###            Feed data endlessly to attackers, bots and scanners."
 echo "###            Also runs a Denial of Service Honeypot (ddospot)."
 echo
+
+select_compose_preset() {
+  local preset="$1"
+  local helper_script="${HOME}/cyberpot/scripts/select_compose_preset.py"
+  local output_file="${HOME}/cyberpot/docker-compose.yml"
+
+  if [ ! -f "${helper_script}" ]; then
+    echo "### Missing helper script: ${helper_script}" >&2
+    exit 1
+  fi
+
+  python3 "${helper_script}" --preset "${preset}" --output "${output_file}"
+}
+
 while true; do
   read -p "### Install Type? (h/s/l/i/m/t) " myCYBERPOT_TYPE
   case "${myCYBERPOT_TYPE}" in
@@ -190,14 +204,14 @@ while true; do
       echo
       echo "### Installing CyberPot Standard / HIVE."
       myCYBERPOT_TYPE="HIVE"
-      cp ${HOME}/cyberpot/compose/standard.yml ${HOME}/cyberpot/docker-compose.yml
+      select_compose_preset "standard"
       myINFO=""
       break ;;
     s|S)
       echo
       echo "### Installing CyberPot Sensor."
       myCYBERPOT_TYPE="SENSOR"
-      cp ${HOME}/cyberpot/compose/sensor.yml ${HOME}/cyberpot/docker-compose.yml
+      select_compose_preset "sensor"
       myINFO="### Make sure to deploy SSH keys to this SENSOR and disable SSH password authentication.
 ### On HIVE run the cyberpot/deploy.sh script to join this SENSOR to the HIVE."
       break ;;
@@ -205,28 +219,28 @@ while true; do
       echo
       echo "### Installing CyberPot LLM."
       myCYBERPOT_TYPE="HIVE"
-      cp ${HOME}/cyberpot/compose/llm.yml ${HOME}/cyberpot/docker-compose.yml
+      select_compose_preset "llm"
       myINFO="Make sure to adjust the CyberPot config file (.env) for Ollama / ChatGPT settings."
       break ;;
     i|I)
       echo
       echo "### Installing CyberPot Mini."
       myCYBERPOT_TYPE="HIVE"
-      cp ${HOME}/cyberpot/compose/mini.yml ${HOME}/cyberpot/docker-compose.yml
+      select_compose_preset "mini"
       myINFO=""
       break ;;
     m|M)
       echo
       echo "### Installing CyberPot Mobile."
       myCYBERPOT_TYPE="MOBILE"
-      cp ${HOME}/cyberpot/compose/mobile.yml ${HOME}/cyberpot/docker-compose.yml
+      select_compose_preset "mobile"
       myINFO=""
       break ;;
     t|T)
       echo
       echo "### Installing CyberPot Tarpit."
       myCYBERPOT_TYPE="HIVE"
-      cp ${HOME}/cyberpot/compose/tarpit.yml ${HOME}/cyberpot/docker-compose.yml
+      select_compose_preset "tarpit"
       myINFO=""
       break ;;
   esac

@@ -467,6 +467,7 @@
         state: stopped
         enabled: false
       when: ansible_distribution in ["Ubuntu"]
+      ignore_errors: true
       tags:
         - "Ubuntu"
 
@@ -569,6 +570,7 @@
         name: systemd-resolved
         state: stopped
       when: ansible_distribution in ["Fedora", "Ubuntu"]
+      ignore_errors: true
       tags:
         - "Fedora"
         - "Ubuntu"
@@ -589,6 +591,7 @@
         line: 'DNSStubListener=no'
         state: present
       when: ansible_distribution in ["Fedora", "Ubuntu"]
+      ignore_errors: true
       tags:
         - "Fedora"
         - "Ubuntu"
@@ -608,6 +611,7 @@
         name: systemd-resolved
         state: restarted
       when: ansible_distribution in ["Fedora", "Ubuntu"]
+      ignore_errors: true
       tags:
         - "Fedora"
         - "Ubuntu"
@@ -664,6 +668,7 @@
         state: restarted
         enabled: true
       when: ansible_distribution in ["AlmaLinux", "Debian", "Fedora", "openSUSE Tumbleweed", "Raspbian", "Rocky", "Ubuntu"]
+      ignore_errors: true
       tags:
         - "AlmaLinux"
         - "Debian"
@@ -775,6 +780,7 @@
         state: stopped
         enabled: yes
       when: ansible_distribution in ["AlmaLinux", "Debian", "Fedora", "openSUSE Tumbleweed", "Raspbian", "Rocky", "Ubuntu"]
+      ignore_errors: true
 
 - name: CyberPot - Setup a randomized daily reboot
   hosts: all

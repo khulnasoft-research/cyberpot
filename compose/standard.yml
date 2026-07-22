@@ -17,6 +17,7 @@ networks:
   mailoney_local:
   medpot_local:
   miniprint_local:
+  rdphoneypot_local:
   redishoneypot_local:
   sentrypeer_local:
   tanner_local:
@@ -463,6 +464,24 @@ services:
     volumes:
      - ${CYBERPOT_DATA_PATH}/miniprint/log/:/opt/miniprint/log/
      - ${CYBERPOT_DATA_PATH}/miniprint/uploads/:/opt/miniprint/uploads/
+
+# RDPHoneypot service
+  rdphoneypot:
+    container_name: rdphoneypot
+    restart: always
+    depends_on:
+      cyberpotinit:
+        condition: service_healthy
+    networks:
+     - rdphoneypot_local
+    ports:
+     - "3389:3389"
+    image: ${CYBERPOT_REPO}/rdphoneypot:${CYBERPOT_VERSION}
+    pull_policy: ${CYBERPOT_PULL_POLICY}
+    read_only: true
+    volumes:
+     - ${CYBERPOT_DATA_PATH}/rdphoneypot/cert:/opt/rdphoneypot/cert
+     - ${CYBERPOT_DATA_PATH}/rdphoneypot/log:/opt/rdphoneypot/log
 
 # Redishoneypot service
   redishoneypot:
